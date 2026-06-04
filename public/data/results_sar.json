@@ -1,0 +1,79 @@
+[
+  {
+    "timestamp_ms": 0,
+    "latitude": -37.8135,
+    "longitude": 144.96325,
+    "confidence": 0.15,
+    "description": "No visible off-trail human movement or signs of life in the forested area. The area near the building and path appears clear.",
+    "frame_index": 0,
+    "altitude_m": 50.2,
+    "heading_deg": 45,
+    "speed_m_s": 5.2
+  },
+  {
+    "timestamp_ms": 3000,
+    "latitude": -37.8132,
+    "longitude": 144.9637,
+    "confidence": 0.18,
+    "description": "No visible off-trail human movement or clothing anomalies. Vehicles are parked in designated areas; no signs of life detected outside.",
+    "frame_index": 1,
+    "altitude_m": 50.8,
+    "heading_deg": 45,
+    "speed_m_s": 5.2
+  },
+  {
+    "timestamp_ms": 6000,
+    "latitude": -37.8129,
+    "longitude": 144.96415,
+    "confidence": 0.18,
+    "description": "No visible off-trail human movement or signs of life. Courtyard and surrounding grounds appear clear.",
+    "frame_index": 2,
+    "altitude_m": 51.4,
+    "heading_deg": 45,
+    "speed_m_s": 5.2
+  },
+  {
+    "timestamp_ms": 9000,
+    "latitude": -37.8126,
+    "longitude": 144.9646,
+    "confidence": 0.18,
+    "description": "No visible off-trail human movement or signs of life. Courtyard and green areas are clear.",
+    "frame_index": 3,
+    "altitude_m": 52.0,
+    "heading_deg": 45,
+    "speed_m_s": 5.2
+  },
+  {
+    "timestamp_ms": 12000,
+    "latitude": -37.8123,
+    "longitude": 144.96505,
+    "confidence": 0.18,
+    "description": "No visible off-trail human movement or signs of life. Courtyard and green areas are clear.",
+    "frame_index": 4,
+    "altitude_m": 52.6,
+    "heading_deg": 45,
+    "speed_m_s": 5.2
+  },
+  {
+    "timestamp_ms": 15000,
+    "latitude": -37.812,
+    "longitude": 144.9655,
+    "confidence": 0.18,
+    "description": "No visible off-trail human movement or signs of life. Courtyard and green areas are clear.",
+    "frame_index": 5,
+    "altitude_m": 53.2,
+    "heading_deg": 45,
+    "speed_m_s": 5.2
+  },
+  {
+    "timestamp_ms": 27000,
+    "latitude": -37.8109,
+    "longitude": 144.96715,
+    "confidence": 0.45,
+    "description": "Possible human figure detected near the parking lot, adjacent to the building with solar panels. No clear signs of distress or off-trail movement, but presence noted for further review.",
+    "frame_index": 9,
+    "altitude_m": 54.0,
+    "heading_deg": 45,
+    "speed_m_s": 5.2
+  }
+]

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Play,
   Pause,
@@ -19,17 +19,80 @@ import { cn } from "@/lib/utils"
 import { useMission } from "@/contexts/mission-context"
 
 export function VideoPlayer() {
-  const { missionMode } = useMission()
-  const [isPlaying, setIsPlaying] = useState(true)
-  const [currentTime, setCurrentTime] = useState(847) // seconds
-  const duration = 1800 // 30 minutes in seconds
+  const { missionMode, videoRef } = useMission()
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
 
   const isSAR = missionMode === "sar"
+  const videoSrc = isSAR ? "/videos/searchForPeople.mp4" : "/videos/battlefield.mp4"
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
+    const secs = Math.floor(seconds % 60)
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
+  }
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+
+    const handleTimeUpdate = () => setCurrentTime(video.currentTime)
+    const handleDurationChange = () => setDuration(video.duration || 0)
+    const handlePlay = () => setIsPlaying(true)
+    const handlePause = () => setIsPlaying(false)
+
+    video.addEventListener("timeupdate", handleTimeUpdate)
+    video.addEventListener("durationchange", handleDurationChange)
+    video.addEventListener("loadedmetadata", handleDurationChange)
+    video.addEventListener("play", handlePlay)
+    video.addEventListener("pause", handlePause)
+
+    return () => {
+      video.removeEventListener("timeupdate", handleTimeUpdate)
+      video.removeEventListener("durationchange", handleDurationChange)
+      video.removeEventListener("loadedmetadata", handleDurationChange)
+      video.removeEventListener("play", handlePlay)
+      video.removeEventListener("pause", handlePause)
+    }
+  }, [videoRef])
+
+  // Reset video when mode changes
+  useEffect(() => {
+    const video = videoRef.current
+    if (video) {
+      video.load()
+      setCurrentTime(0)
+      setIsPlaying(false)
+    }
+  }, [missionMode, videoRef])
+
+  const togglePlayPause = () => {
+    const video = videoRef.current
+    if (!video) return
+    if (video.paused) {
+      video.play()
+    } else {
+      video.pause()
+    }
+  }
+
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const video = videoRef.current
+    if (!video || !duration) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const percent = (e.clientX - rect.left) / rect.width
+    video.currentTime = percent * duration
+  }
+
+  const skipBackward = () => {
+    const video = videoRef.current
+    if (video) video.currentTime = Math.max(0, video.currentTime - 10)
+  }
+
+  const skipForward = () => {
+    const video = videoRef.current
+    if (video) video.currentTime = Math.min(duration, video.currentTime + 10)
   }
 
   return (
@@ -83,121 +146,30 @@ export function VideoPlayer() {
       </div>
 
       {/* Video Area */}
-      <div className="relative aspect-video bg-background">
-        {/* Simulated thermal/IR video feed */}
-        <div className={cn(
-          "absolute inset-0",
-          isSAR 
-            ? "bg-gradient-to-br from-slate-950 via-orange-950/30 to-slate-900" 
-            : "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"
-        )}>
-          {/* Scan lines effect */}
-          <div
-            className="absolute inset-0 opacity-10"
-            style={{
-              backgroundImage:
-                "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)",
-            }}
-          />
-
-          {/* Crosshair overlay */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative">
-              {/* Center crosshair */}
-              <div className={cn(
-                "h-40 w-40 rounded-full border",
-                isSAR ? "border-orange-500/30" : "border-primary/30"
-              )} />
-              <div className={cn(
-                "absolute left-1/2 top-0 h-8 w-px -translate-x-1/2",
-                isSAR ? "bg-orange-500/50" : "bg-primary/50"
-              )} />
-              <div className={cn(
-                "absolute bottom-0 left-1/2 h-8 w-px -translate-x-1/2",
-                isSAR ? "bg-orange-500/50" : "bg-primary/50"
-              )} />
-              <div className={cn(
-                "absolute left-0 top-1/2 h-px w-8 -translate-y-1/2",
-                isSAR ? "bg-orange-500/50" : "bg-primary/50"
-              )} />
-              <div className={cn(
-                "absolute right-0 top-1/2 h-px w-8 -translate-y-1/2",
-                isSAR ? "bg-orange-500/50" : "bg-primary/50"
-              )} />
-              <div className={cn(
-                "absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full",
-                isSAR ? "bg-orange-500/50" : "bg-primary/50"
-              )} />
-            </div>
-          </div>
-
-          {/* Target boxes - dynamic based on mode */}
-          {isSAR ? (
-            <>
-              {/* SAR targets */}
-              <div className="absolute left-[20%] top-[30%]">
-                <div className="h-16 w-24 border-2 border-yellow-400" style={{ boxShadow: "0 0 10px rgba(250, 204, 21, 0.5)" }}>
-                  <div className="absolute -top-5 left-0 font-mono text-[10px] text-yellow-400">
-                    THERMAL-01 | WARM
-                  </div>
-                </div>
-              </div>
-              <div className="absolute right-[25%] top-[45%]">
-                <div className="h-12 w-12 border-2 border-orange-500 animate-pulse" style={{ boxShadow: "0 0 10px rgba(249, 115, 22, 0.5)" }}>
-                  <div className="absolute -top-5 left-0 font-mono text-[10px] text-orange-500">
-                    SUBJECT | CONFIRMED
-                  </div>
-                </div>
-              </div>
-              <div className="absolute bottom-[25%] left-[40%]">
-                <div className="h-14 w-20 border-2 border-yellow-500" style={{ boxShadow: "0 0 10px rgba(234, 179, 8, 0.5)" }}>
-                  <div className="absolute -top-5 left-0 font-mono text-[10px] text-yellow-500">
-                    DEBRIS | INTEREST
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              {/* Tactical targets */}
-              <div className="absolute left-[20%] top-[30%]">
-                <div className="h-16 w-24 border-2 border-neon-cyan glow-cyan">
-                  <div className="absolute -top-5 left-0 font-mono text-[10px] text-neon-cyan">
-                    VEH-01 | TRACKED
-                  </div>
-                </div>
-              </div>
-              <div className="absolute right-[25%] top-[45%]">
-                <div className="h-12 w-12 border-2 border-neon-amber glow-amber animate-pulse">
-                  <div className="absolute -top-5 left-0 font-mono text-[10px] text-neon-amber">
-                    POI-ALPHA | ANOMALY
-                  </div>
-                </div>
-              </div>
-              <div className="absolute bottom-[25%] left-[40%]">
-                <div className="h-14 w-20 border-2 border-neon-red glow-red">
-                  <div className="absolute -top-5 left-0 font-mono text-[10px] text-neon-red">
-                    TGT-03 | PRIORITY
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+      <div className="relative aspect-video bg-background overflow-hidden">
+        {/* Real Video Element */}
+        <video
+          ref={videoRef}
+          key={videoSrc}
+          className="absolute inset-0 h-full w-full object-cover"
+          src={videoSrc}
+          muted
+          playsInline
+        />
 
         {/* HUD Overlay - Top Left */}
-        <div className="absolute left-4 top-4 space-y-1">
+        <div className="absolute left-4 top-4 space-y-1 pointer-events-none">
           <div className={cn(
             "font-mono text-[10px]",
             isSAR ? "text-orange-400/80" : "text-primary/80"
           )}>
-            LAT: {isSAR ? "39.1261° N" : "34.0522° N"}
+            LAT: {isSAR ? "-37.8109° S" : "-17.8132° N"}
           </div>
           <div className={cn(
             "font-mono text-[10px]",
             isSAR ? "text-orange-400/80" : "text-primary/80"
           )}>
-            LON: {isSAR ? "106.5701° W" : "118.2437° W"}
+            LON: {isSAR ? "144.9672° E" : "74.9637° E"}
           </div>
           <div className={cn(
             "font-mono text-[10px]",
@@ -208,7 +180,7 @@ export function VideoPlayer() {
         </div>
 
         {/* HUD Overlay - Top Right */}
-        <div className="absolute right-4 top-4 space-y-1 text-right">
+        <div className="absolute right-4 top-4 space-y-1 text-right pointer-events-none">
           <div className={cn(
             "font-mono text-[10px]",
             isSAR ? "text-orange-400/80" : "text-primary/80"
@@ -230,7 +202,7 @@ export function VideoPlayer() {
         </div>
 
         {/* HUD Overlay - Bottom Left */}
-        <div className="absolute bottom-4 left-4">
+        <div className="absolute bottom-4 left-4 pointer-events-none">
           <div className="font-mono text-xs font-semibold text-foreground/80">
             {formatTime(currentTime)} / {formatTime(duration)}
           </div>
@@ -257,11 +229,14 @@ export function VideoPlayer() {
       <div className="flex items-center gap-4 border-t border-border px-4 py-3">
         {/* Playback Controls */}
         <div className="flex items-center gap-2">
-          <button className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+          <button 
+            onClick={skipBackward}
+            className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
             <SkipBack className="h-4 w-4" />
           </button>
           <button
-            onClick={() => setIsPlaying(!isPlaying)}
+            onClick={togglePlayPause}
             className={cn(
               "flex h-10 w-10 items-center justify-center rounded-full transition-colors",
               isSAR 
@@ -275,7 +250,10 @@ export function VideoPlayer() {
               <Play className="h-5 w-5 translate-x-0.5" />
             )}
           </button>
-          <button className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+          <button 
+            onClick={skipForward}
+            className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
             <SkipForward className="h-4 w-4" />
           </button>
         </div>
@@ -285,56 +263,19 @@ export function VideoPlayer() {
           <span className="font-mono text-xs text-muted-foreground">
             {formatTime(currentTime)}
           </span>
-          <div className="relative flex-1">
+          <div 
+            className="relative flex-1 cursor-pointer"
+            onClick={handleSeek}
+          >
             <div className="h-1.5 w-full rounded-full bg-secondary">
               <div
                 className={cn(
-                  "h-full rounded-full",
+                  "h-full rounded-full transition-all",
                   isSAR ? "bg-orange-500" : "bg-primary"
                 )}
-                style={{ width: `${(currentTime / duration) * 100}%` }}
+                style={{ width: duration ? `${(currentTime / duration) * 100}%` : "0%" }}
               />
             </div>
-            {/* Event markers on timeline */}
-            {isSAR ? (
-              <>
-                <div
-                  className="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-yellow-400"
-                  style={{ left: "12%" }}
-                />
-                <div
-                  className="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-orange-500"
-                  style={{ left: "28%" }}
-                />
-                <div
-                  className="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-yellow-500"
-                  style={{ left: "55%" }}
-                />
-                <div
-                  className="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-orange-400"
-                  style={{ left: "82%" }}
-                />
-              </>
-            ) : (
-              <>
-                <div
-                  className="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-neon-amber"
-                  style={{ left: "15%" }}
-                />
-                <div
-                  className="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-neon-red"
-                  style={{ left: "32%" }}
-                />
-                <div
-                  className="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-neon-cyan"
-                  style={{ left: "58%" }}
-                />
-                <div
-                  className="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-neon-amber"
-                  style={{ left: "75%" }}
-                />
-              </>
-            )}
           </div>
           <span className="font-mono text-xs text-muted-foreground">
             {formatTime(duration)}
