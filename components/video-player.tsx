@@ -148,19 +148,15 @@ export function VideoPlayer() {
           <div className="flex items-center gap-2">
             <span className="relative flex h-2 w-2">
               <span className={cn(
-                "absolute inline-flex h-full w-full animate-ping rounded-full opacity-75",
-                isSAR ? "bg-orange-500" : "bg-neon-red"
-              )} />
-              <span className={cn(
                 "relative inline-flex h-2 w-2 rounded-full",
-                isSAR ? "bg-orange-500" : "bg-neon-red"
+                isSAR ? "bg-orange-500" : "bg-muted-foreground"
               )} />
             </span>
             <span className={cn(
               "font-mono text-xs font-semibold uppercase tracking-widest",
-              isSAR ? "text-orange-500" : "text-neon-red"
+              isSAR ? "text-orange-500" : "text-muted-foreground"
             )}>
-              Live
+              Archived
             </span>
           </div>
           <div className="h-4 w-px bg-border" />

@@ -3,33 +3,24 @@
 import { useState } from "react"
 import {
   Crosshair,
-  Map,
-  Video,
-  Clock,
-  FileText,
-  Settings,
-  Radio,
-  Target,
   ChevronLeft,
   ChevronRight,
-  Shield,
-  Activity,
+  LayoutDashboard,
+  BarChart3,
+  FileText,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useMission, ActiveView } from "@/contexts/mission-context"
 
-const navItems = [
-  { icon: Video, label: "Live Feed", active: true },
-  { icon: Target, label: "Targets" },
-  { icon: Map, label: "Area Map" },
-  { icon: Clock, label: "Mission Log" },
-  { icon: Activity, label: "Analytics" },
-  { icon: Radio, label: "Comms" },
-  { icon: FileText, label: "Reports" },
-  { icon: Settings, label: "Settings" },
+const navItems: { icon: typeof LayoutDashboard; label: string; view: ActiveView }[] = [
+  { icon: LayoutDashboard, label: "Analysis Desk", view: "analysis" },
+  { icon: BarChart3, label: "Mission Statistics", view: "statistics" },
+  { icon: FileText, label: "Generate AAR", view: "aar" },
 ]
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
+  const { activeView, setActiveView } = useMission()
 
   return (
     <aside
@@ -60,9 +51,10 @@ export function Sidebar() {
         {navItems.map((item) => (
           <button
             key={item.label}
+            onClick={() => setActiveView(item.view)}
             className={cn(
               "flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-              item.active
+              activeView === item.view
                 ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:bg-accent hover:text-foreground"
             )}
@@ -76,26 +68,6 @@ export function Sidebar() {
           </button>
         ))}
       </nav>
-
-      {/* Status Indicator */}
-      <div className="border-t border-border p-3">
-        <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
-          <div className="relative">
-            <Shield className="h-5 w-5 text-success" />
-            <span className="absolute -right-0.5 -top-0.5 h-2 w-2 animate-pulse rounded-full bg-success" />
-          </div>
-          {!collapsed && (
-            <div className="flex flex-col">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-success">
-                Secure Link
-              </span>
-              <span className="font-mono text-[10px] text-muted-foreground">
-                AES-256
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* Collapse Toggle */}
       <button

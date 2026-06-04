@@ -179,46 +179,19 @@ function getConfidenceColor(confidence: number): string {
 }
 
 export function EventTimeline() {
-  const { missionMode, seekToTime } = useMission()
-  const [sarEvents, setSarEvents] = useState<SAREvent[]>([])
-  const [tacticalEvents, setTacticalEvents] = useState<TacticalEvent[]>([])
+  const { missionMode, seekToTime, missionData, isDataLoaded } = useMission()
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
   const [filter, setFilter] = useState<EventType | "all">("all")
-  const [loading, setLoading] = useState(true)
 
   const isSAR = missionMode === "sar"
   const eventConfig = isSAR ? sarEventConfig : tacticalEventConfig
 
-  // Fetch data when mission mode changes
+  // Reset state when mission mode changes
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true)
-      setSelectedIndex(null)
-      setExpandedIndex(null)
-      try {
-        const dataPath = isSAR ? "/data/results_sar.json" : "/data/results_tactical.json"
-        const response = await fetch(dataPath)
-        if (!response.ok) throw new Error("Failed to fetch")
-        const data = await response.json()
-        if (isSAR) {
-          setSarEvents(data)
-        } else {
-          setTacticalEvents(data)
-        }
-      } catch (error) {
-        console.error("Error fetching timeline data:", error)
-        if (isSAR) {
-          setSarEvents([])
-        } else {
-          setTacticalEvents([])
-        }
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchData()
-  }, [isSAR])
+    setSelectedIndex(null)
+    setExpandedIndex(null)
+  }, [missionMode])
 
   const handleEventClick = (timestampMs: number, index: number) => {
     setSelectedIndex(index)
@@ -230,32 +203,21 @@ export function EventTimeline() {
     setExpandedIndex(expandedIndex === index ? null : index)
   }
 
-  // Build unified event list
-  const events = isSAR
-    ? sarEvents.map((e, i) => ({
-        index: i,
-        timestampMs: e.timestamp_ms,
-        timestamp: formatTimestamp(e.timestamp_ms),
-        type: getConfidenceEventType(e.confidence),
-        title: e.title || "Detection Event",
-        category: e.category || "THERMAL",
-        description: e.description,
-        coordinates: `${e.latitude.toFixed(4)}°, ${e.longitude.toFixed(4)}°`,
-        confidence: e.confidence,
-        threatLevel: undefined,
-      }))
-    : tacticalEvents.map((e, i) => ({
-        index: i,
-        timestampMs: e.timestamp_ms,
-        timestamp: formatTimestamp(e.timestamp_ms),
-        type: getThreatEventType(e.threat_level),
-        title: e.title || "Tactical Event",
-        category: e.category || "MOVEMENT",
-        description: e.description,
-        coordinates: `${e.latitude.toFixed(4)}°, ${e.longitude.toFixed(4)}°`,
-        confidence: undefined,
-        threatLevel: e.threat_level,
-      }))
+  // Build unified event list from context missionData
+  const events = missionData.map((e, i) => ({
+    index: i,
+    timestampMs: e.timestamp_ms,
+    timestamp: formatTimestamp(e.timestamp_ms),
+    type: e.threat_level 
+      ? getThreatEventType(e.threat_level) 
+      : getConfidenceEventType(e.confidence || 0),
+    title: e.title || (isSAR ? "Detection Event" : "Tactical Event"),
+    category: e.category || (isSAR ? "THERMAL" : "MOVEMENT"),
+    description: e.description,
+    coordinates: `${e.coordinates.lat.toFixed(4)}°, ${e.coordinates.lon.toFixed(4)}°`,
+    confidence: e.confidence,
+    threatLevel: e.threat_level,
+  }))
 
   const filteredEvents =
     filter === "all" ? events : events.filter((e) => e.type === filter)
@@ -316,10 +278,10 @@ export function EventTimeline() {
 
       {/* Events List */}
       <div className="flex-1 overflow-y-auto p-2">
-        {loading ? (
+        {!isDataLoaded ? (
           <div className="flex h-full items-center justify-center">
-            <span className="font-mono text-xs text-muted-foreground animate-pulse">
-              Loading events...
+            <span className="font-mono text-xs text-muted-foreground">
+              Upload mission data to view events
             </span>
           </div>
         ) : filteredEvents.length === 0 ? (

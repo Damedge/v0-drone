@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Search, FileDown, Bell, Wifi, Battery, Signal, ChevronDown } from "lucide-react"
+import { Search, FileDown, Bell, Wifi, Battery, Signal, ChevronDown, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useMission, MissionMode } from "@/contexts/mission-context"
 import { cn } from "@/lib/utils"
@@ -11,7 +11,11 @@ const missions = [
   { id: "sar", label: "Op: Alpine Rescue", mode: "sar" as MissionMode, subtitle: "Search & Rescue" },
 ]
 
-export function TopNav() {
+interface TopNavProps {
+  onUploadClick?: () => void
+}
+
+export function TopNav({ onUploadClick }: TopNavProps) {
   const [currentTime, setCurrentTime] = useState<string | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const { missionMode, setMissionMode } = useMission()
@@ -150,6 +154,17 @@ export function TopNav() {
             isSAR ? "bg-orange-500" : "bg-neon-red"
           )} />
         </button>
+
+        {/* Upload Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onUploadClick}
+          className="h-8 gap-2 font-mono text-xs uppercase tracking-wide"
+        >
+          <Upload className="h-3.5 w-3.5" />
+          Upload
+        </Button>
 
         {/* Export Button */}
         <Button
