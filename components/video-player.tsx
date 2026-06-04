@@ -334,14 +334,19 @@ export function VideoPlayer() {
   }
 
   // Handle fullscreen (target container, not video)
-  const handleFullscreen = () => {
+  const handleFullscreen = async () => {
     const container = videoContainerRef.current
     if (!container) return
     
-    if (document.fullscreenElement) {
-      document.exitFullscreen()
-    } else {
-      container.requestFullscreen()
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen()
+      } else {
+        await container.requestFullscreen()
+      }
+    } catch (error) {
+      // Fullscreen may be blocked by permissions policy in iframes
+      console.log("[v0] Fullscreen not available:", error)
     }
   }
 
@@ -408,7 +413,7 @@ export function VideoPlayer() {
   }
 
   return (
-    <div className="flex flex-col rounded-lg border border-border bg-card">
+    <div className="flex h-full flex-col rounded-lg border border-border bg-card overflow-hidden">
       {/* Video Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <div className="flex items-center gap-3">
@@ -466,11 +471,11 @@ export function VideoPlayer() {
         </div>
       </div>
 
-      {/* Video Area with Pan/Zoom Support */}
+      {/* Video Area with Pan/Zoom Support - flex-1 to fill remaining space, but constrained */}
       <div 
         ref={videoContainerRef}
         className={cn(
-          "relative aspect-video bg-background overflow-hidden select-none",
+          "relative flex-1 min-h-0 bg-background overflow-hidden select-none",
           getCursorStyle()
         )}
         onClick={handleVideoAreaClick}

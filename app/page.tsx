@@ -54,20 +54,20 @@ function DashboardContent() {
           {activeView === "analysis" && (
             <div className="flex h-full flex-col gap-4">
               {/* Top Section - Video Player + Event Timeline */}
-              <div className="flex flex-1 gap-4 min-h-0">
-                {/* Video Player - Takes most of the width */}
-                <div className="flex-[2]">
+              <div className="flex gap-4" style={{ height: 'calc(100% - 17rem)' }}>
+                {/* Video Player - Takes most of the width, constrained height */}
+                <div className="flex-[2] min-w-0 overflow-hidden">
                   <VideoPlayer />
                 </div>
 
                 {/* Event Timeline - Fixed width on the right */}
-                <div className="w-80 min-w-80">
+                <div className="w-80 min-w-80 overflow-hidden">
                   <EventTimeline />
                 </div>
               </div>
 
-              {/* Bottom Section - Map View */}
-              <div className="h-64 min-h-64">
+              {/* Bottom Section - Map View - Fixed height */}
+              <div className="h-64 shrink-0">
                 <MapView />
               </div>
             </div>
