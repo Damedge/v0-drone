@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Play,
   Pause,
@@ -23,6 +23,7 @@ export function VideoPlayer() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  const playPromiseRef = useRef<Promise<void> | null>(null)
 
   const isSAR = missionMode === "sar"
   const videoSrc = isSAR ? "/videos/searchForPeople.mp4" : "/videos/battlefield.mp4"
@@ -61,23 +62,67 @@ export function VideoPlayer() {
   useEffect(() => {
     const video = videoRef.current
     if (video) {
+      playPromiseRef.current = null
       video.load()
       setCurrentTime(0)
       setIsPlaying(false)
     }
   }, [missionMode, videoRef])
 
-  const togglePlayPause = () => {
+  const safePlay = async () => {
     const video = videoRef.current
     if (!video) return
-    if (video.paused) {
-      video.play()
-    } else {
-      video.pause()
+
+    // Wait for any pending play promise to resolve before playing again
+    if (playPromiseRef.current) {
+      try {
+        await playPromiseRef.current
+      } catch {
+        // Ignore AbortError from previous play
+      }
+    }
+
+    try {
+      playPromiseRef.current = video.play()
+      await playPromiseRef.current
+    } catch (error) {
+      // Ignore AbortError - happens when play is interrupted
+      if (error instanceof Error && error.name !== "AbortError") {
+        console.error("Video play error:", error)
+      }
+    } finally {
+      playPromiseRef.current = null
     }
   }
 
-  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+  const safePause = async () => {
+    const video = videoRef.current
+    if (!video) return
+
+    // Wait for any pending play promise before pausing
+    if (playPromiseRef.current) {
+      try {
+        await playPromiseRef.current
+      } catch {
+        // Ignore AbortError
+      }
+      playPromiseRef.current = null
+    }
+
+    video.pause()
+  }
+
+  const togglePlayPause = async () => {
+    const video = videoRef.current
+    if (!video) return
+    if (video.paused) {
+      await safePlay()
+    } else {
+      await safePause()
+    }
+  }
+
+  const handleSeek = async (e: React.MouseEvent<HTMLDivElement>) => {
     const video = videoRef.current
     if (!video || !duration) return
     const rect = e.currentTarget.getBoundingClientRect()

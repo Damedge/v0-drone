@@ -9,10 +9,12 @@ import {
   Radio,
   MapPin,
   ChevronDown,
+  ChevronUp,
   Filter,
   Thermometer,
   Heart,
   Navigation,
+  Circle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useMission } from "@/contexts/mission-context"
@@ -24,6 +26,8 @@ interface SAREvent {
   longitude: number
   confidence: number
   description: string
+  title?: string
+  category?: string
   frame_index: number
 }
 
@@ -34,10 +38,24 @@ interface TacticalEvent {
   longitude: number
   threat_level: "low" | "medium" | "high" | "critical"
   description: string
+  title?: string
+  category?: string
   frame_index: number
 }
 
 type EventType = "anomaly" | "detection" | "priority" | "movement" | "comms"
+
+// Category colors
+const categoryColors: Record<string, { bg: string; text: string }> = {
+  MOVEMENT: { bg: "bg-blue-500/20", text: "text-blue-400" },
+  PERSONNEL: { bg: "bg-purple-500/20", text: "text-purple-400" },
+  ANOMALY: { bg: "bg-amber-500/20", text: "text-amber-400" },
+  VEHICLE: { bg: "bg-cyan-500/20", text: "text-cyan-400" },
+  THERMAL: { bg: "bg-orange-500/20", text: "text-orange-400" },
+  SIGNAL: { bg: "bg-green-500/20", text: "text-green-400" },
+  DEBRIS: { bg: "bg-gray-500/20", text: "text-gray-400" },
+  SUBJECT: { bg: "bg-yellow-500/20", text: "text-yellow-400" },
+}
 
 // Tactical event config
 const tacticalEventConfig: Record<
@@ -128,11 +146,44 @@ function getConfidenceEventType(confidence: number): EventType {
   return "detection"
 }
 
+function getThreatColor(level: string): string {
+  switch (level) {
+    case "critical":
+      return "text-red-500"
+    case "high":
+      return "text-red-400"
+    case "medium":
+      return "text-amber-400"
+    default:
+      return "text-green-400"
+  }
+}
+
+function getThreatDotColor(level: string): string {
+  switch (level) {
+    case "critical":
+      return "bg-red-500"
+    case "high":
+      return "bg-red-400"
+    case "medium":
+      return "bg-amber-400"
+    default:
+      return "bg-green-400"
+  }
+}
+
+function getConfidenceColor(confidence: number): string {
+  if (confidence >= 0.8) return "text-green-400"
+  if (confidence >= 0.5) return "text-orange-400"
+  return "text-red-400"
+}
+
 export function EventTimeline() {
   const { missionMode, seekToTime } = useMission()
   const [sarEvents, setSarEvents] = useState<SAREvent[]>([])
   const [tacticalEvents, setTacticalEvents] = useState<TacticalEvent[]>([])
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
   const [filter, setFilter] = useState<EventType | "all">("all")
   const [loading, setLoading] = useState(true)
 
@@ -144,6 +195,7 @@ export function EventTimeline() {
     const fetchData = async () => {
       setLoading(true)
       setSelectedIndex(null)
+      setExpandedIndex(null)
       try {
         const dataPath = isSAR ? "/data/results_sar.json" : "/data/results_tactical.json"
         const response = await fetch(dataPath)
@@ -173,6 +225,11 @@ export function EventTimeline() {
     seekToTime(timestampMs)
   }
 
+  const handleExpandToggle = (e: React.MouseEvent, index: number) => {
+    e.stopPropagation()
+    setExpandedIndex(expandedIndex === index ? null : index)
+  }
+
   // Build unified event list
   const events = isSAR
     ? sarEvents.map((e, i) => ({
@@ -180,19 +237,23 @@ export function EventTimeline() {
         timestampMs: e.timestamp_ms,
         timestamp: formatTimestamp(e.timestamp_ms),
         type: getConfidenceEventType(e.confidence),
-        title: `Confidence: ${Math.round(e.confidence * 100)}%`,
+        title: e.title || "Detection Event",
+        category: e.category || "THERMAL",
         description: e.description,
         coordinates: `${e.latitude.toFixed(4)}°, ${e.longitude.toFixed(4)}°`,
         confidence: e.confidence,
+        threatLevel: undefined,
       }))
     : tacticalEvents.map((e, i) => ({
         index: i,
         timestampMs: e.timestamp_ms,
         timestamp: formatTimestamp(e.timestamp_ms),
         type: getThreatEventType(e.threat_level),
-        title: `Threat: ${e.threat_level.charAt(0).toUpperCase() + e.threat_level.slice(1)}`,
+        title: e.title || "Tactical Event",
+        category: e.category || "MOVEMENT",
         description: e.description,
         coordinates: `${e.latitude.toFixed(4)}°, ${e.longitude.toFixed(4)}°`,
+        confidence: undefined,
         threatLevel: e.threat_level,
       }))
 
@@ -273,13 +334,15 @@ export function EventTimeline() {
               const config = eventConfig[event.type]
               const Icon = config.icon
               const isSelected = selectedIndex === event.index
+              const isExpanded = expandedIndex === event.index
+              const catColors = categoryColors[event.category] || { bg: "bg-gray-500/20", text: "text-gray-400" }
 
               return (
-                <button
+                <div
                   key={event.index}
                   onClick={() => handleEventClick(event.timestampMs, event.index)}
                   className={cn(
-                    "w-full rounded-md border p-3 text-left transition-all",
+                    "w-full rounded-md border p-3 text-left transition-all cursor-pointer",
                     isSelected
                       ? isSAR 
                         ? "border-orange-500 bg-orange-500/5" 
@@ -291,7 +354,7 @@ export function EventTimeline() {
                     {/* Timestamp Pill */}
                     <div
                       className={cn(
-                        "flex items-center gap-1 rounded px-2 py-1",
+                        "flex items-center gap-1 rounded px-2 py-1 shrink-0",
                         config.bgColor
                       )}
                     >
@@ -303,14 +366,69 @@ export function EventTimeline() {
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-mono text-xs font-medium text-foreground truncate">
+                      {/* Title Row with Category Badge */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-xs font-medium text-foreground">
                           {event.title}
                         </span>
+                        <span className={cn(
+                          "rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider",
+                          catColors.bg,
+                          catColors.text
+                        )}>
+                          {event.category}
+                        </span>
                       </div>
-                      <p className="mt-1 font-mono text-[11px] leading-relaxed text-muted-foreground line-clamp-2">
-                        {event.description}
-                      </p>
+
+                      {/* Threat/Confidence Indicator */}
+                      <div className="mt-1.5 flex items-center gap-2">
+                        {!isSAR && event.threatLevel && (
+                          <div className="flex items-center gap-1.5">
+                            <Circle className={cn("h-2 w-2 fill-current", getThreatDotColor(event.threatLevel), getThreatColor(event.threatLevel))} />
+                            <span className={cn("font-mono text-[10px] uppercase font-medium", getThreatColor(event.threatLevel))}>
+                              {event.threatLevel} Threat
+                            </span>
+                          </div>
+                        )}
+                        {isSAR && event.confidence !== undefined && (
+                          <span className={cn("font-mono text-[10px] font-medium", getConfidenceColor(event.confidence))}>
+                            {Math.round(event.confidence * 100)}% Confidence
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* Description with Expand/Collapse */}
+                      <div className="mt-2">
+                        <p className={cn(
+                          "font-mono text-[11px] leading-relaxed text-muted-foreground transition-all duration-200",
+                          isExpanded ? "" : "line-clamp-1"
+                        )}>
+                          {event.description}
+                        </p>
+                        <button
+                          onClick={(e) => handleExpandToggle(e, event.index)}
+                          className={cn(
+                            "mt-1 flex items-center gap-0.5 font-mono text-[10px] transition-colors",
+                            isSAR 
+                              ? "text-orange-400 hover:text-orange-300" 
+                              : "text-primary hover:text-primary/80"
+                          )}
+                        >
+                          {isExpanded ? (
+                            <>
+                              <ChevronUp className="h-3 w-3" />
+                              <span>Hide Details</span>
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="h-3 w-3" />
+                              <span>Show Details</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Coordinates */}
                       {event.coordinates && (
                         <div className="mt-2 flex items-center gap-1 text-muted-foreground/70">
                           <MapPin className="h-2.5 w-2.5" />
@@ -321,7 +439,7 @@ export function EventTimeline() {
                       )}
                     </div>
                   </div>
-                </button>
+                </div>
               )
             })}
           </div>
