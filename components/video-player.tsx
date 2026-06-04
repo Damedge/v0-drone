@@ -16,13 +16,88 @@ import {
   RotateCcw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useMission } from "@/contexts/mission-context"
+import { useMission, MissionEvent } from "@/contexts/mission-context"
+
+// Tactical bounding box overlay component
+function TacticalBoundingBox({ 
+  event, 
+  isSAR 
+}: { 
+  event: MissionEvent
+  isSAR: boolean 
+}) {
+  if (!event.target_box) return null
+
+  const { x_pct, y_pct, width_pct, height_pct } = event.target_box
+  const borderColor = isSAR ? "border-yellow-400" : "border-red-500"
+  const glowColor = isSAR ? "shadow-yellow-400/50" : "shadow-red-500/50"
+  const textColor = isSAR ? "text-yellow-400" : "text-red-500"
+  const bgColor = isSAR ? "bg-yellow-400/20" : "bg-red-500/20"
+  const labelBg = isSAR ? "bg-yellow-400" : "bg-red-500"
+
+  const label = event.threat_level 
+    ? event.threat_level.toUpperCase() 
+    : event.title.toUpperCase()
+
+  return (
+    <div
+      className={cn(
+        "absolute pointer-events-none border-2 transition-all duration-150",
+        borderColor,
+        "shadow-[0_0_12px_2px]",
+        glowColor
+      )}
+      style={{
+        left: `${x_pct * 100}%`,
+        top: `${y_pct * 100}%`,
+        width: `${width_pct * 100}%`,
+        height: `${height_pct * 100}%`,
+      }}
+    >
+      {/* Tactical label */}
+      <div 
+        className={cn(
+          "absolute -top-5 left-0 px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wider",
+          labelBg,
+          "text-black"
+        )}
+      >
+        {label}
+      </div>
+
+      {/* Corner brackets - Top Left */}
+      <div className={cn("absolute -left-0.5 -top-0.5 h-3 w-3 border-l-2 border-t-2", borderColor)} />
+      {/* Corner brackets - Top Right */}
+      <div className={cn("absolute -right-0.5 -top-0.5 h-3 w-3 border-r-2 border-t-2", borderColor)} />
+      {/* Corner brackets - Bottom Left */}
+      <div className={cn("absolute -bottom-0.5 -left-0.5 h-3 w-3 border-b-2 border-l-2", borderColor)} />
+      {/* Corner brackets - Bottom Right */}
+      <div className={cn("absolute -bottom-0.5 -right-0.5 h-3 w-3 border-b-2 border-r-2", borderColor)} />
+
+      {/* Center crosshair */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+        <div className={cn("h-4 w-px", bgColor)} />
+        <div className={cn("absolute left-1/2 top-1/2 h-px w-4 -translate-x-1/2 -translate-y-1/2", bgColor)} />
+      </div>
+
+      {/* Scanning line animation */}
+      <div 
+        className={cn(
+          "absolute left-0 h-0.5 w-full animate-pulse",
+          isSAR ? "bg-yellow-400/40" : "bg-red-500/40"
+        )}
+        style={{ top: '50%' }}
+      />
+    </div>
+  )
+}
 
 export function VideoPlayer() {
-  const { missionMode, videoRef } = useMission()
+  const { missionMode, videoRef, missionData } = useMission()
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  const [activeEvent, setActiveEvent] = useState<MissionEvent | null>(null)
   const playPromiseRef = useRef<Promise<void> | null>(null)
 
   const isSAR = missionMode === "sar"
@@ -33,6 +108,19 @@ export function VideoPlayer() {
     const secs = Math.floor(seconds % 60)
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
+
+  // Find active event based on current video time
+  useEffect(() => {
+    const ACTIVE_WINDOW = 1.5 // seconds
+    const foundEvent = missionData.find((event) => {
+      const eventTimeSec = event.timestamp_ms / 1000
+      return (
+        event.target_box &&
+        Math.abs(currentTime - eventTimeSec) <= ACTIVE_WINDOW
+      )
+    })
+    setActiveEvent(foundEvent || null)
+  }, [currentTime, missionData])
 
   useEffect(() => {
     const video = videoRef.current
@@ -66,6 +154,7 @@ export function VideoPlayer() {
       video.load()
       setCurrentTime(0)
       setIsPlaying(false)
+      setActiveEvent(null)
     }
   }, [missionMode, videoRef])
 
@@ -186,7 +275,7 @@ export function VideoPlayer() {
         </div>
       </div>
 
-      {/* Video Area */}
+      {/* Video Area with Bounding Box Overlay */}
       <div className="relative aspect-video bg-background overflow-hidden">
         {/* Real Video Element */}
         <video
@@ -197,6 +286,11 @@ export function VideoPlayer() {
           muted
           playsInline
         />
+
+        {/* CS:GO ESP Tactical Bounding Box */}
+        {activeEvent && (
+          <TacticalBoundingBox event={activeEvent} isSAR={isSAR} />
+        )}
 
         {/* HUD Overlay - Top Left */}
         <div className="absolute left-4 top-4 space-y-1 pointer-events-none">
@@ -242,12 +336,41 @@ export function VideoPlayer() {
           </div>
         </div>
 
-        {/* HUD Overlay - Bottom Left */}
-        <div className="absolute bottom-4 left-4 pointer-events-none">
-          <div className="font-mono text-xs font-semibold text-foreground/80">
-            {formatTime(currentTime)} / {formatTime(duration)}
+        {/* Active Target Indicator */}
+        {activeEvent && (
+          <div className={cn(
+            "absolute bottom-4 left-4 flex items-center gap-2 rounded px-2 py-1 pointer-events-none",
+            isSAR ? "bg-yellow-400/20 border border-yellow-400/50" : "bg-red-500/20 border border-red-500/50"
+          )}>
+            <span className={cn(
+              "relative flex h-2 w-2",
+            )}>
+              <span className={cn(
+                "absolute inline-flex h-full w-full animate-ping rounded-full opacity-75",
+                isSAR ? "bg-yellow-400" : "bg-red-500"
+              )} />
+              <span className={cn(
+                "relative inline-flex h-2 w-2 rounded-full",
+                isSAR ? "bg-yellow-400" : "bg-red-500"
+              )} />
+            </span>
+            <span className={cn(
+              "font-mono text-xs font-semibold uppercase tracking-wider",
+              isSAR ? "text-yellow-400" : "text-red-500"
+            )}>
+              {isSAR ? "Target Acquired" : "Tracking"}
+            </span>
           </div>
-        </div>
+        )}
+
+        {/* Timecode when no active target */}
+        {!activeEvent && (
+          <div className="absolute bottom-4 left-4 pointer-events-none">
+            <div className="font-mono text-xs font-semibold text-foreground/80">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </div>
+          </div>
+        )}
 
         {/* Zoom Controls - Right Side */}
         <div className="absolute right-4 top-1/2 flex -translate-y-1/2 flex-col gap-1">
@@ -317,6 +440,20 @@ export function VideoPlayer() {
                 style={{ width: duration ? `${(currentTime / duration) * 100}%` : "0%" }}
               />
             </div>
+            {/* Event markers on timeline */}
+            {missionData.filter(e => e.target_box).map((event) => (
+              <div
+                key={event.id}
+                className={cn(
+                  "absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm",
+                  isSAR ? "bg-yellow-400/70" : "bg-red-500/70"
+                )}
+                style={{
+                  left: duration ? `${(event.timestamp_ms / 1000 / duration) * 100}%` : "0%"
+                }}
+                title={event.title}
+              />
+            ))}
           </div>
           <span className="font-mono text-xs text-muted-foreground">
             {formatTime(duration)}

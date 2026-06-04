@@ -4,8 +4,16 @@
     "latitude": -17.8135,
     "longitude": 74.96325,
     "threat_level": "medium",
-    "description": "Multiple armored vehicles and technicals with mounted weapons observed. Troops dismounting and taking cover behind berms. Troop movement and defensive posturing detected.",
+    "description": "Multiple armed vehicles and dismounted troops are positioned around a berm, with some troops taking cover and others preparing to move. At least one technical with a mounted heavy weapon and visible flags is present.",
+    "title": "Troops & Technicals",
+    "category": "ASSET",
     "frame_index": 0,
+    "target_box": {
+      "x_pct": 0.48,
+      "y_pct": 0.73,
+      "width_pct": 0.22,
+      "height_pct": 0.22
+    },
     "altitude_m": 50.2,
     "heading_deg": 45,
     "speed_m_s": 5.2
@@ -15,8 +23,16 @@
     "latitude": -17.8132,
     "longitude": 74.9637,
     "threat_level": "medium",
-    "description": "Troops advancing from cover, moving in squad formation toward right side of frame. Technical vehicle remains in support position. Increased infantry maneuver.",
+    "description": "Squad-sized element is advancing at a run from right to left, moving from open ground toward cover. Indicates active maneuver or assault.",
+    "title": "Squad Maneuver",
+    "category": "MOVEMENT",
     "frame_index": 1,
+    "target_box": {
+      "x_pct": 0.8,
+      "y_pct": 0.38,
+      "width_pct": 0.18,
+      "height_pct": 0.1
+    },
     "altitude_m": 50.8,
     "heading_deg": 45,
     "speed_m_s": 5.2
@@ -26,53 +42,17 @@
     "latitude": -17.8129,
     "longitude": 74.96415,
     "threat_level": "medium",
-    "description": "Troops consolidating at new cover positions. Technical vehicle with mounted weapon advancing to new location. Infantry forming small groups behind berms.",
+    "description": "Technical with mounted weapon and flags has repositioned to the right side of the frame, supporting advancing troops. Indicates coordinated movement.",
+    "title": "Technical Reposition",
+    "category": "VEHICLE",
     "frame_index": 2,
+    "target_box": {
+      "x_pct": 0.85,
+      "y_pct": 0.56,
+      "width_pct": 0.18,
+      "height_pct": 0.18
+    },
     "altitude_m": 51.4,
-    "heading_deg": 45,
-    "speed_m_s": 5.2
-  },
-  {
-    "timestamp_ms": 9000,
-    "latitude": -17.8126,
-    "longitude": 74.9646,
-    "threat_level": "medium",
-    "description": "Technical vehicle halts, providing overwatch. Troops establish positions behind multiple berms and sandbags, forming defensive clusters.",
-    "frame_index": 3,
-    "altitude_m": 52.0,
-    "heading_deg": 45,
-    "speed_m_s": 5.2
-  },
-  {
-    "timestamp_ms": 12000,
-    "latitude": -17.8123,
-    "longitude": 74.96505,
-    "threat_level": "medium",
-    "description": "Troops continue to reinforce defensive positions. Technical vehicle stationary, gunner remains alert. One troop moving between positions.",
-    "frame_index": 4,
-    "altitude_m": 52.6,
-    "heading_deg": 45,
-    "speed_m_s": 5.2
-  },
-  {
-    "timestamp_ms": 15000,
-    "latitude": -17.812,
-    "longitude": 74.9655,
-    "threat_level": "medium",
-    "description": "Troops fully established in defensive clusters behind berms. One individual moving between positions, no visible enemy contact.",
-    "frame_index": 5,
-    "altitude_m": 53.2,
-    "heading_deg": 45,
-    "speed_m_s": 5.2
-  },
-  {
-    "timestamp_ms": 18000,
-    "latitude": -17.8117,
-    "longitude": 74.96595,
-    "threat_level": "medium",
-    "description": "Multiple infantry squads observed in dispersed positions, some using sandbag cover, one individual advancing toward the berm. No vehicles in immediate proximity.",
-    "frame_index": 6,
-    "altitude_m": 53.8,
     "heading_deg": 45,
     "speed_m_s": 5.2
   },
@@ -81,41 +61,16 @@
     "latitude": -17.8114,
     "longitude": 74.9664,
     "threat_level": "medium",
-    "description": "Infantry squad advancing in tactical file formation up a berm, weapons at the ready. No hostile vehicles detected.",
+    "description": "A squad of troops is observed advancing in a tactical formation up a dirt embankment, moving toward a fortified position. This marks the start of coordinated movement.",
+    "title": "Squad Advance",
+    "category": "MOVEMENT",
     "frame_index": 7,
-    "altitude_m": 54.0,
-    "heading_deg": 45,
-    "speed_m_s": 5.2
-  },
-  {
-    "timestamp_ms": 24000,
-    "latitude": -17.8111,
-    "longitude": 74.96685,
-    "threat_level": "medium",
-    "description": "Squad continues movement up berm, maintaining spacing and tactical posture. No change in vehicle presence.",
-    "frame_index": 8,
-    "altitude_m": 54.0,
-    "heading_deg": 45,
-    "speed_m_s": 5.2
-  },
-  {
-    "timestamp_ms": 27000,
-    "latitude": -17.8108,
-    "longitude": 74.9673,
-    "threat_level": "medium",
-    "description": "Squad nearing crest of berm, weapons raised, preparing to take covered positions. No visible enemy contact.",
-    "frame_index": 9,
-    "altitude_m": 54.0,
-    "heading_deg": 45,
-    "speed_m_s": 5.2
-  },
-  {
-    "timestamp_ms": 30000,
-    "latitude": -17.8105,
-    "longitude": 74.96775,
-    "threat_level": "medium",
-    "description": "Squad reaching cover at berm crest, preparing to establish firing positions. Burned-out vehicle and debris visible ahead.",
-    "frame_index": 10,
+    "target_box": {
+      "x_pct": 0.44,
+      "y_pct": 0.45,
+      "width_pct": 0.18,
+      "height_pct": 0.25
+    },
     "altitude_m": 54.0,
     "heading_deg": 45,
     "speed_m_s": 5.2
@@ -125,8 +80,16 @@
     "latitude": -17.8102,
     "longitude": 74.9682,
     "threat_level": "medium",
-    "description": "Squad in covered firing positions behind berm, weapons aimed forward. No enemy forces or vehicles detected in immediate area.",
+    "description": "Troops have reached cover behind a sand berm and are taking up firing positions, indicating preparation for engagement or overwatch.",
+    "title": "Troops Take Cover",
+    "category": "MOVEMENT",
     "frame_index": 11,
+    "target_box": {
+      "x_pct": 0.3,
+      "y_pct": 0.6,
+      "width_pct": 0.4,
+      "height_pct": 0.3
+    },
     "altitude_m": 54.0,
     "heading_deg": 45,
     "speed_m_s": 5.2

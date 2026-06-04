@@ -5,6 +5,13 @@ import { createContext, useContext, useState, useRef, ReactNode, RefObject } fro
 export type MissionMode = "tactical" | "sar"
 export type ActiveView = "analysis" | "statistics" | "aar"
 
+export interface TargetBox {
+  x_pct: number
+  y_pct: number
+  width_pct: number
+  height_pct: number
+}
+
 export interface MissionEvent {
   id: string
   timestamp_ms: number
@@ -14,6 +21,7 @@ export interface MissionEvent {
   threat_level?: string
   confidence?: number
   coordinates: { lat: number; lon: number }
+  target_box?: TargetBox
 }
 
 interface MissionContextType {
