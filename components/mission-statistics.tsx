@@ -11,10 +11,11 @@ import {
   Truck,
   Eye,
   Zap,
+  Camera,
 } from "lucide-react"
 
 export function MissionStatistics() {
-  const { missionMode, missionData, videoRef } = useMission()
+  const { missionMode, missionData, videoRef, snapshots } = useMission()
   const isSAR = missionMode === "sar"
 
   // Calculate stats from mission data
@@ -262,6 +263,61 @@ export function MissionStatistics() {
           </div>
         </div>
       )}
+
+      {/* Captured Intelligence Section */}
+      <div className="rounded-lg border border-border bg-card">
+        <div className="border-b border-border px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Camera className={cn("h-4 w-4", isSAR ? "text-orange-500" : "text-primary")} />
+            <h2 className="font-mono text-sm font-semibold text-foreground">
+              Captured Intelligence
+            </h2>
+            <span className="ml-auto font-mono text-xs text-muted-foreground">
+              {snapshots.length} snapshot{snapshots.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+        </div>
+        <div className="p-4">
+          {snapshots.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Camera className="h-12 w-12 text-muted-foreground/30 mb-3" />
+              <p className="font-mono text-xs text-muted-foreground">
+                No snapshots captured during this session.
+              </p>
+              <p className="font-mono text-[10px] text-muted-foreground/70 mt-1">
+                Use the Snapshot button in the video player to capture frames.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              {snapshots.map((snapshot) => (
+                <div 
+                  key={snapshot.id} 
+                  className="group relative aspect-video overflow-hidden rounded-lg border border-border bg-background"
+                >
+                  <img 
+                    src={snapshot.imageUrl} 
+                    alt={`Snapshot at ${formatTime(snapshot.timestamp)}`}
+                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                  <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 transition-opacity group-hover:opacity-100">
+                    <p className={cn(
+                      "font-mono text-[10px] font-semibold",
+                      isSAR ? "text-orange-400" : "text-primary"
+                    )}>
+                      {formatTime(snapshot.timestamp)}
+                    </p>
+                    <p className="font-mono text-[9px] text-white/70">
+                      {snapshot.capturedAt.toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

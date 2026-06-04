@@ -24,6 +24,13 @@ export interface MissionEvent {
   target_box?: TargetBox
 }
 
+export interface Snapshot {
+  id: string
+  imageUrl: string
+  timestamp: number
+  capturedAt: Date
+}
+
 interface MissionContextType {
   missionMode: MissionMode
   setMissionMode: (mode: MissionMode) => void
@@ -39,6 +46,8 @@ interface MissionContextType {
   setVideoFileName: (name: string) => void
   telemetryFileName: string
   setTelemetryFileName: (name: string) => void
+  snapshots: Snapshot[]
+  addSnapshot: (snapshot: Snapshot) => void
 }
 
 const MissionContext = createContext<MissionContextType | undefined>(undefined)
@@ -50,6 +59,7 @@ export function MissionProvider({ children }: { children: ReactNode }) {
   const [isDataLoaded, setIsDataLoaded] = useState(false)
   const [videoFileName, setVideoFileName] = useState("")
   const [telemetryFileName, setTelemetryFileName] = useState("")
+  const [snapshots, setSnapshots] = useState<Snapshot[]>([])
   const videoRef = useRef<HTMLVideoElement | null>(null)
 
   const seekToTime = (timestampMs: number) => {
@@ -57,6 +67,10 @@ export function MissionProvider({ children }: { children: ReactNode }) {
       videoRef.current.currentTime = timestampMs / 1000
       videoRef.current.pause()
     }
+  }
+
+  const addSnapshot = (snapshot: Snapshot) => {
+    setSnapshots((prev) => [...prev, snapshot])
   }
 
   return (
@@ -74,7 +88,9 @@ export function MissionProvider({ children }: { children: ReactNode }) {
       videoFileName,
       setVideoFileName,
       telemetryFileName,
-      setTelemetryFileName
+      setTelemetryFileName,
+      snapshots,
+      addSnapshot
     }}>
       {children}
     </MissionContext.Provider>

@@ -10,7 +10,6 @@ import {
   Volume2,
   Camera,
   Crosshair,
-  Layers,
   ZoomIn,
   ZoomOut,
   RotateCw,
@@ -18,7 +17,7 @@ import {
   Move,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useMission, MissionEvent } from "@/contexts/mission-context"
+import { useMission, MissionEvent, Snapshot } from "@/contexts/mission-context"
 
 // Marker interface for crosshair points
 interface Marker {
@@ -143,13 +142,15 @@ function UserMarker({ marker, isSAR }: { marker: Marker; isSAR: boolean }) {
 }
 
 export function VideoPlayer() {
-  const { missionMode, videoRef, missionData } = useMission()
+  const { missionMode, videoRef, missionData, addSnapshot } = useMission()
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [activeEvent, setActiveEvent] = useState<MissionEvent | null>(null)
+  const [showFlash, setShowFlash] = useState(false)
   const playPromiseRef = useRef<Promise<void> | null>(null)
   const videoContainerRef = useRef<HTMLDivElement | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   // Zoom/Rotate/Marker state
   const [zoomLevel, setZoomLevel] = useState(1)
@@ -298,6 +299,52 @@ export function VideoPlayer() {
     setMarkMode((prev) => !prev)
   }
 
+  // Handle snapshot capture
+  const handleSnapshot = () => {
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    if (!video || !canvas) return
+
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+
+    // Draw current frame to canvas
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+    // Convert to base64 image URL
+    const imageUrl = canvas.toDataURL("image/jpeg", 0.9)
+
+    // Create snapshot object
+    const snapshot: Snapshot = {
+      id: `snapshot-${Date.now()}`,
+      imageUrl,
+      timestamp: currentTime,
+      capturedAt: new Date(),
+    }
+
+    // Add to context
+    addSnapshot(snapshot)
+
+    // Show flash effect
+    setShowFlash(true)
+    setTimeout(() => setShowFlash(false), 150)
+  }
+
+  // Handle fullscreen (target container, not video)
+  const handleFullscreen = () => {
+    const container = videoContainerRef.current
+    if (!container) return
+    
+    if (document.fullscreenElement) {
+      document.exitFullscreen()
+    } else {
+      container.requestFullscreen()
+    }
+  }
+
   // Pan handlers for drag-to-pan when zoomed
   const handlePanStart = (e: React.MouseEvent<HTMLDivElement>) => {
     if (zoomLevel <= 1 || markMode) return
@@ -404,21 +451,15 @@ export function VideoPlayer() {
               {rotation}°
             </span>
           )}
-          <button className={cn(
-            "flex h-7 items-center gap-1.5 rounded border px-2 text-xs transition-colors",
-            isSAR 
-              ? "border-orange-500/30 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20" 
-              : "border-border bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground"
-          )}>
-            <Layers className="h-3 w-3" />
-            <span className="font-mono uppercase">Multi-View</span>
-          </button>
-          <button className={cn(
-            "flex h-7 items-center gap-1.5 rounded border px-2 text-xs transition-colors",
-            isSAR 
-              ? "border-orange-500/30 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20" 
-              : "border-border bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground"
-          )}>
+          <button 
+            onClick={handleSnapshot}
+            className={cn(
+              "flex h-7 items-center gap-1.5 rounded border px-2 text-xs transition-colors",
+              isSAR 
+                ? "border-orange-500/30 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20" 
+                : "border-border bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground"
+            )}
+          >
             <Camera className="h-3 w-3" />
             <span className="font-mono uppercase">Snapshot</span>
           </button>
@@ -438,17 +479,26 @@ export function VideoPlayer() {
         onMouseUp={handlePanEnd}
         onMouseLeave={handlePanEnd}
       >
+        {/* Hidden canvas for snapshot capture */}
+        <canvas ref={canvasRef} className="hidden" />
+        
+        {/* Flash effect for snapshot */}
+        {showFlash && (
+          <div className="absolute inset-0 z-50 bg-white pointer-events-none" />
+        )}
+
         {/* Real Video Element with zoom, rotation, and pan transforms */}
         <video
           ref={videoRef}
           key={videoSrc}
-          className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 pointer-events-none"
+          className="absolute inset-0 h-full w-full object-contain transition-transform duration-300 pointer-events-none"
           style={{
             transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel}) rotate(${rotation}deg)`,
           }}
           src={videoSrc}
           muted
           playsInline
+          crossOrigin="anonymous"
           onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
           onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
           onDurationChange={(e) => setDuration(e.currentTarget.duration || 0)}
@@ -716,7 +766,10 @@ export function VideoPlayer() {
           <button className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
             <Volume2 className="h-4 w-4" />
           </button>
-          <button className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+          <button 
+            onClick={handleFullscreen}
+            className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
             <Maximize2 className="h-4 w-4" />
           </button>
         </div>
