@@ -50,8 +50,8 @@ const sarFleet: FleetAsset[] = [
 ]
 
 const industrialFleet: FleetAsset[] = [
-  { id: "drone1", name: "Inspector 1", sensorType: "4K RGB", thumbnail: "/videos/turbine_flight.mp4", videoSrc: "/videos/turbine_flight.mp4" },
-  { id: "drone2", name: "Inspector 2", sensorType: "THERMAL", thumbnail: "/videos/turbine_flight.mp4", videoSrc: "/videos/turbine_flight.mp4" },
+  { id: "drone1", name: "Inspector 1", sensorType: "4K RGB", thumbnail: "/videos/windTurbine.mp4", videoSrc: "/videos/windTurbine.mp4" },
+  { id: "drone2", name: "Inspector 2", sensorType: "THERMAL", thumbnail: "/videos/windTurbine.mp4", videoSrc: "/videos/windTurbine.mp4" },
 ]
 
 // Telemetry interface
