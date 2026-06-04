@@ -417,8 +417,11 @@ export function VideoPlayer() {
     // After 3 seconds, complete training
     setTimeout(async () => {
       // For Industrial mode, inject event at future timestamp with target_box
+  // For Industrial mode, inject event at future timestamp (3 seconds ahead)
       const isIndustrialMode = missionMode === "industrial"
-      const timestampMs = isIndustrialMode ? 25000 : currentTime * 1000
+      // Magic Trick: Set it 3 seconds in the future, but don't let it exceed video duration
+      const futureTimeSec = Math.min(currentTime + 3, duration - 1)
+      const timestampMs = isIndustrialMode ? futureTimeSec * 1000 : currentTime * 1000
       const eventTitle = isIndustrialMode 
         ? `ANOMALY DETECTED: '${annotationLabel.trim()}' identified on Blade C`
         : annotationLabel.trim()
