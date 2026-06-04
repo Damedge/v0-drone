@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useRef, ReactNode, RefObject } from "react"
 
 export type MissionMode = "tactical" | "sar"
-export type ActiveView = "analysis" | "statistics" | "aar"
+export type ActiveView = "hub" | "analysis" | "statistics" | "aar"
 
 export interface TargetBox {
   x_pct: number
@@ -45,7 +45,7 @@ const MissionContext = createContext<MissionContextType | undefined>(undefined)
 
 export function MissionProvider({ children }: { children: ReactNode }) {
   const [missionMode, setMissionMode] = useState<MissionMode>("tactical")
-  const [activeView, setActiveView] = useState<ActiveView>("analysis")
+  const [activeView, setActiveView] = useState<ActiveView>("hub")
   const [missionData, setMissionData] = useState<MissionEvent[]>([])
   const [isDataLoaded, setIsDataLoaded] = useState(false)
   const [videoFileName, setVideoFileName] = useState("")

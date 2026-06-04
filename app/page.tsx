@@ -9,15 +9,31 @@ import { MapView } from "@/components/map-view"
 import { MissionStatistics } from "@/components/mission-statistics"
 import { GenerateAAR } from "@/components/generate-aar"
 import { UploadModal } from "@/components/upload-modal"
+import { MissionHub } from "@/components/mission-hub"
 import { MissionProvider, useMission } from "@/contexts/mission-context"
 import { cn } from "@/lib/utils"
 
 function DashboardContent() {
   const { activeView, isDataLoaded } = useMission()
-  const [showUploadModal, setShowUploadModal] = useState(!isDataLoaded)
+  const [showUploadModal, setShowUploadModal] = useState(false)
 
   const handleCloseModal = () => {
     setShowUploadModal(false)
+  }
+
+  // Show Mission Hub as full-screen entry point
+  if (activeView === "hub") {
+    return (
+      <div className="flex h-screen bg-background">
+        <Sidebar />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <TopNav onUploadClick={() => setShowUploadModal(true)} />
+          <main className="flex-1 overflow-auto">
+            <MissionHub />
+          </main>
+        </div>
+      </div>
+    )
   }
 
   return (

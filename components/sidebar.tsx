@@ -8,11 +8,13 @@ import {
   LayoutDashboard,
   BarChart3,
   FileText,
+  Radar,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useMission, ActiveView } from "@/contexts/mission-context"
 
 const navItems: { icon: typeof LayoutDashboard; label: string; view: ActiveView }[] = [
+  { icon: Radar, label: "Mission Hub", view: "hub" },
   { icon: LayoutDashboard, label: "Analysis Desk", view: "analysis" },
   { icon: BarChart3, label: "Mission Statistics", view: "statistics" },
   { icon: FileText, label: "Generate AAR", view: "aar" },
