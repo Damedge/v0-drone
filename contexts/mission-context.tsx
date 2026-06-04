@@ -31,6 +31,15 @@ export interface Snapshot {
   capturedAt: Date
 }
 
+export interface TrainedAnnotation {
+  id: string
+  title: string
+  imageUrl: string
+  timestamp: number
+  trainedAt: Date
+  category: string
+}
+
 interface MissionContextType {
   missionMode: MissionMode
   setMissionMode: (mode: MissionMode) => void
@@ -40,6 +49,7 @@ interface MissionContextType {
   seekToTime: (timestampMs: number) => void
   missionData: MissionEvent[]
   setMissionData: (data: MissionEvent[]) => void
+  addMissionEvent: (event: MissionEvent) => void
   isDataLoaded: boolean
   setIsDataLoaded: (loaded: boolean) => void
   videoFileName: string
@@ -48,6 +58,8 @@ interface MissionContextType {
   setTelemetryFileName: (name: string) => void
   snapshots: Snapshot[]
   addSnapshot: (snapshot: Snapshot) => void
+  trainedAnnotations: TrainedAnnotation[]
+  addTrainedAnnotation: (annotation: TrainedAnnotation) => void
 }
 
 const MissionContext = createContext<MissionContextType | undefined>(undefined)
@@ -60,6 +72,7 @@ export function MissionProvider({ children }: { children: ReactNode }) {
   const [videoFileName, setVideoFileName] = useState("")
   const [telemetryFileName, setTelemetryFileName] = useState("")
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
+  const [trainedAnnotations, setTrainedAnnotations] = useState<TrainedAnnotation[]>([])
   const videoRef = useRef<HTMLVideoElement | null>(null)
 
   const seekToTime = (timestampMs: number) => {
@@ -73,9 +86,18 @@ export function MissionProvider({ children }: { children: ReactNode }) {
     setSnapshots((prev) => [...prev, snapshot])
   }
 
-  // Reset snapshots when mission mode changes
+  const addMissionEvent = (event: MissionEvent) => {
+    setMissionData((prev) => [...prev, event].sort((a, b) => a.timestamp_ms - b.timestamp_ms))
+  }
+
+  const addTrainedAnnotation = (annotation: TrainedAnnotation) => {
+    setTrainedAnnotations((prev) => [...prev, annotation])
+  }
+
+  // Reset snapshots and trained annotations when mission mode changes
   useEffect(() => {
     setSnapshots([])
+    setTrainedAnnotations([])
   }, [missionMode])
 
   return (
@@ -88,6 +110,7 @@ export function MissionProvider({ children }: { children: ReactNode }) {
       seekToTime,
       missionData,
       setMissionData,
+      addMissionEvent,
       isDataLoaded,
       setIsDataLoaded,
       videoFileName,
@@ -95,7 +118,9 @@ export function MissionProvider({ children }: { children: ReactNode }) {
       telemetryFileName,
       setTelemetryFileName,
       snapshots,
-      addSnapshot
+      addSnapshot,
+      trainedAnnotations,
+      addTrainedAnnotation
     }}>
       {children}
     </MissionContext.Provider>

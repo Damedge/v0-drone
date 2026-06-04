@@ -15,9 +15,11 @@ import {
   RotateCw,
   X,
   Move,
+  Brain,
+  Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useMission, Snapshot } from "@/contexts/mission-context"
+import { useMission, Snapshot, MissionEvent, TrainedAnnotation } from "@/contexts/mission-context"
 
 // Marker interface for crosshair points
 interface Marker {
@@ -98,7 +100,7 @@ function UserMarker({ marker, isSAR }: { marker: Marker; isSAR: boolean }) {
 }
 
 export function VideoPlayer() {
-  const { missionMode, videoRef, missionData, addSnapshot } = useMission()
+  const { missionMode, videoRef, missionData, addSnapshot, addMissionEvent, addTrainedAnnotation, telemetry: contextTelemetry } = useMission()
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -129,6 +131,15 @@ export function VideoPlayer() {
     heading: 0,
     alt: 0,
   })
+
+  // Annotation/Training state
+  type AnnotationState = "idle" | "annotating" | "training" | "complete"
+  const [annotationState, setAnnotationState] = useState<AnnotationState>("idle")
+  const [annotationLabel, setAnnotationLabel] = useState("")
+  const [trainingText, setTrainingText] = useState("")
+  const [annotationBoxPosition, setAnnotationBoxPosition] = useState({ x: 50, y: 50 })
+  const [isDraggingBox, setIsDraggingBox] = useState(false)
+  const [boxDragStart, setBoxDragStart] = useState({ x: 0, y: 0 })
 
   const isSAR = missionMode === "sar"
   const fleet = isSAR ? sarFleet : tacticalFleet
@@ -331,6 +342,123 @@ export function VideoPlayer() {
     }
   }
 
+  // Start annotation mode
+  const startAnnotationMode = async () => {
+    await safePause()
+    setAnnotationState("annotating")
+    setAnnotationLabel("")
+    setAnnotationBoxPosition({ x: 50, y: 50 })
+  }
+
+  // Cancel annotation
+  const cancelAnnotation = () => {
+    setAnnotationState("idle")
+    setAnnotationLabel("")
+  }
+
+  // Capture frame for annotation
+  const captureAnnotationFrame = () => {
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    if (!video || !canvas) return null
+
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return null
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    return canvas.toDataURL("image/jpeg", 0.9)
+  }
+
+  // Submit annotation and start training
+  const submitAnnotation = async () => {
+    if (!annotationLabel.trim()) return
+
+    const imageUrl = captureAnnotationFrame()
+    if (!imageUrl) return
+
+    // Start training phase
+    setAnnotationState("training")
+    setTrainingText("Fine-tuning edge weights...")
+
+    // Simulate training with text cycling
+    setTimeout(() => {
+      setTrainingText("Local model updated.")
+    }, 1500)
+
+    // After 3 seconds, complete training
+    setTimeout(async () => {
+      const timestampMs = currentTime * 1000
+
+      // Create new mission event
+      const newEvent: MissionEvent = {
+        id: `user-trained-${Date.now()}`,
+        timestamp_ms: timestampMs,
+        title: annotationLabel.trim(),
+        category: "USER-TRAINED",
+        description: `Operator-annotated anomaly: ${annotationLabel.trim()}. Trained at ${new Date().toLocaleTimeString()}.`,
+        threat_level: isSAR ? undefined : "high",
+        confidence: isSAR ? 0.99 : undefined,
+        coordinates: { lat: telemetry.lat, lon: telemetry.lon },
+      }
+
+      // Create trained annotation for statistics
+      const trainedAnnotation: TrainedAnnotation = {
+        id: `annotation-${Date.now()}`,
+        title: annotationLabel.trim(),
+        imageUrl,
+        timestamp: currentTime,
+        trainedAt: new Date(),
+        category: "USER-TRAINED",
+      }
+
+      // Add to context
+      addMissionEvent(newEvent)
+      addTrainedAnnotation(trainedAnnotation)
+
+      // Reset and resume
+      setAnnotationState("complete")
+      
+      // Brief flash then resume
+      setShowFlash(true)
+      setTimeout(() => {
+        setShowFlash(false)
+        setAnnotationState("idle")
+        setAnnotationLabel("")
+        safePlay()
+      }, 300)
+    }, 3000)
+  }
+
+  // Box dragging handlers
+  const handleBoxDragStart = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setIsDraggingBox(true)
+    setBoxDragStart({ x: e.clientX, y: e.clientY })
+  }
+
+  const handleBoxDragMove = (e: React.MouseEvent) => {
+    if (!isDraggingBox) return
+    e.stopPropagation()
+    
+    const container = videoContainerRef.current
+    if (!container) return
+    
+    const rect = container.getBoundingClientRect()
+    const deltaX = ((e.clientX - boxDragStart.x) / rect.width) * 100
+    const deltaY = ((e.clientY - boxDragStart.y) / rect.height) * 100
+    
+    setAnnotationBoxPosition(prev => ({
+      x: Math.max(10, Math.min(90, prev.x + deltaX)),
+      y: Math.max(10, Math.min(90, prev.y + deltaY)),
+    }))
+    setBoxDragStart({ x: e.clientX, y: e.clientY })
+  }
+
+  const handleBoxDragEnd = () => {
+    setIsDraggingBox(false)
+  }
+
   // Pan handlers for drag-to-pan when zoomed
   const handlePanStart = (e: React.MouseEvent<HTMLDivElement>) => {
     if (zoomLevel <= 1 || markMode) return
@@ -449,6 +577,20 @@ export function VideoPlayer() {
             <Camera className="h-3 w-3" />
             <span className="font-mono uppercase">Snapshot</span>
           </button>
+          <button 
+            onClick={startAnnotationMode}
+            disabled={annotationState !== "idle"}
+            className={cn(
+              "flex h-7 items-center gap-1.5 rounded border px-2 text-xs transition-colors",
+              isSAR 
+                ? "border-orange-500/30 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20" 
+                : "border-primary/30 bg-primary/10 text-primary hover:bg-primary/20",
+              annotationState !== "idle" && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            <Brain className="h-3 w-3" />
+            <span className="font-mono uppercase">Annotate & Train</span>
+          </button>
         </div>
       </div>
 
@@ -508,6 +650,112 @@ export function VideoPlayer() {
         {/* Mark mode indicator - fixed position */}
         {markMode && (
           <div className="absolute inset-0 z-30 pointer-events-none border-4 border-dashed border-cyan-400/50 animate-pulse" />
+        )}
+
+        {/* Annotation Mode Overlay */}
+        {annotationState === "annotating" && (
+          <div 
+            className="absolute inset-0 z-40 bg-black/40"
+            onMouseMove={handleBoxDragMove}
+            onMouseUp={handleBoxDragEnd}
+            onMouseLeave={handleBoxDragEnd}
+          >
+            {/* Draggable targeting box */}
+            <div
+              className={cn(
+                "absolute w-32 h-24 border-2 border-dashed cursor-move transition-colors",
+                isSAR ? "border-orange-500" : "border-red-500"
+              )}
+              style={{
+                left: `${annotationBoxPosition.x}%`,
+                top: `${annotationBoxPosition.y}%`,
+                transform: "translate(-50%, -50%)",
+              }}
+              onMouseDown={handleBoxDragStart}
+            >
+              {/* Corner brackets */}
+              <div className={cn("absolute -left-1 -top-1 h-3 w-3 border-l-2 border-t-2", isSAR ? "border-orange-500" : "border-red-500")} />
+              <div className={cn("absolute -right-1 -top-1 h-3 w-3 border-r-2 border-t-2", isSAR ? "border-orange-500" : "border-red-500")} />
+              <div className={cn("absolute -bottom-1 -left-1 h-3 w-3 border-b-2 border-l-2", isSAR ? "border-orange-500" : "border-red-500")} />
+              <div className={cn("absolute -bottom-1 -right-1 h-3 w-3 border-b-2 border-r-2", isSAR ? "border-orange-500" : "border-red-500")} />
+              {/* Center crosshair */}
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                <div className={cn("h-4 w-0.5", isSAR ? "bg-orange-500/50" : "bg-red-500/50")} />
+                <div className={cn("absolute left-1/2 top-1/2 h-0.5 w-4 -translate-x-1/2 -translate-y-1/2", isSAR ? "bg-orange-500/50" : "bg-red-500/50")} />
+              </div>
+            </div>
+
+            {/* Input panel */}
+            <div 
+              className={cn(
+                "absolute rounded-lg border p-4 backdrop-blur-sm",
+                isSAR ? "border-orange-500/50 bg-orange-950/90" : "border-primary/50 bg-slate-900/90"
+              )}
+              style={{
+                left: `${Math.min(annotationBoxPosition.x + 10, 70)}%`,
+                top: `${annotationBoxPosition.y}%`,
+                transform: "translateY(-50%)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className={cn(
+                "font-mono text-[10px] uppercase tracking-widest mb-2",
+                isSAR ? "text-orange-400" : "text-primary"
+              )}>
+                Identify Unknown Anomaly
+              </p>
+              <input
+                type="text"
+                value={annotationLabel}
+                onChange={(e) => setAnnotationLabel(e.target.value)}
+                placeholder="e.g., Improvised Truck"
+                className="w-48 h-8 px-2 font-mono text-xs bg-background border border-border rounded text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submitAnnotation()
+                  if (e.key === "Escape") cancelAnnotation()
+                }}
+              />
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={submitAnnotation}
+                  disabled={!annotationLabel.trim()}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-wide transition-colors",
+                    isSAR 
+                      ? "bg-orange-500 text-white hover:bg-orange-600" 
+                      : "bg-primary text-primary-foreground hover:bg-primary/90",
+                    !annotationLabel.trim() && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  <Brain className="h-3 w-3" />
+                  Train Edge Model
+                </button>
+                <button
+                  onClick={cancelAnnotation}
+                  className="px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-wide text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Training Overlay */}
+        {annotationState === "training" && (
+          <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/60">
+            <Loader2 className={cn(
+              "h-12 w-12 animate-spin mb-4",
+              isSAR ? "text-orange-500" : "text-primary"
+            )} />
+            <p className={cn(
+              "font-mono text-sm uppercase tracking-widest animate-pulse",
+              isSAR ? "text-orange-400" : "text-primary"
+            )}>
+              {trainingText}
+            </p>
+          </div>
         )}
 
         {/* HUD Overlay - Top Left (fixed position) */}

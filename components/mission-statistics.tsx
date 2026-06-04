@@ -12,10 +12,11 @@ import {
   Eye,
   Zap,
   Camera,
+  Brain,
 } from "lucide-react"
 
 export function MissionStatistics() {
-  const { missionMode, missionData, videoRef, snapshots } = useMission()
+  const { missionMode, missionData, videoRef, snapshots, trainedAnnotations } = useMission()
   const isSAR = missionMode === "sar"
 
   // Calculate stats from mission data
@@ -310,6 +311,71 @@ export function MissionStatistics() {
                     </p>
                     <p className="font-mono text-[9px] text-white/70">
                       {snapshot.capturedAt.toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Trained Data Section */}
+      <div className="rounded-lg border border-border bg-card">
+        <div className="border-b border-border px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Brain className={cn("h-4 w-4", isSAR ? "text-orange-500" : "text-primary")} />
+            <h2 className="font-mono text-sm font-semibold text-foreground">
+              Trained Data (HITL Annotations)
+            </h2>
+            <span className="ml-auto font-mono text-xs text-muted-foreground">
+              {trainedAnnotations.length} annotation{trainedAnnotations.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+        </div>
+        <div className="p-4">
+          {trainedAnnotations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Brain className="h-12 w-12 text-muted-foreground/30 mb-3" />
+              <p className="font-mono text-xs text-muted-foreground">
+                No operator annotations during this session.
+              </p>
+              <p className="font-mono text-[10px] text-muted-foreground/70 mt-1">
+                {"Use the \"Annotate & Train\" button to label anomalies and train the edge model."}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              {trainedAnnotations.map((annotation) => (
+                <div 
+                  key={annotation.id} 
+                  className={cn(
+                    "group relative aspect-video overflow-hidden rounded-lg border-2 bg-background",
+                    isSAR ? "border-orange-500/50" : "border-primary/50"
+                  )}
+                >
+                  <img 
+                    src={annotation.imageUrl} 
+                    alt={annotation.title}
+                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                  />
+                  {/* Category badge */}
+                  <div className={cn(
+                    "absolute top-2 left-2 px-1.5 py-0.5 rounded font-mono text-[8px] uppercase tracking-wider",
+                    isSAR ? "bg-orange-500 text-white" : "bg-primary text-primary-foreground"
+                  )}>
+                    User-Trained
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-2">
+                    <p className={cn(
+                      "font-mono text-xs font-semibold truncate",
+                      isSAR ? "text-orange-400" : "text-primary"
+                    )}>
+                      {annotation.title}
+                    </p>
+                    <p className="font-mono text-[9px] text-white/70">
+                      {formatTime(annotation.timestamp)} | {annotation.trainedAt.toLocaleTimeString()}
                     </p>
                   </div>
                 </div>
