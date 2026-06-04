@@ -1,11 +1,20 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Search, FileDown, Bell, Wifi, Battery, Signal } from "lucide-react"
+import { Search, FileDown, Bell, Wifi, Battery, Signal, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useMission, MissionMode } from "@/contexts/mission-context"
+import { cn } from "@/lib/utils"
+
+const missions = [
+  { id: "tactical", label: "Op: Silent Guardian", mode: "tactical" as MissionMode, subtitle: "Tactical" },
+  { id: "sar", label: "Op: Alpine Rescue", mode: "sar" as MissionMode, subtitle: "Search & Rescue" },
+]
 
 export function TopNav() {
   const [currentTime, setCurrentTime] = useState<string | null>(null)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const { missionMode, setMissionMode } = useMission()
 
   useEffect(() => {
     const updateTime = () => {
@@ -16,6 +25,9 @@ export function TopNav() {
     return () => clearInterval(interval)
   }, [])
 
+  const currentMission = missions.find((m) => m.mode === missionMode) || missions[0]
+  const isSAR = missionMode === "sar"
+
   return (
     <header className="flex h-14 items-center justify-between border-b border-border bg-card px-4">
       {/* Left Section - Mission Info */}
@@ -24,19 +36,68 @@ export function TopNav() {
           <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
             Active Mission
           </span>
-          <span className="font-mono text-sm font-semibold tracking-tight text-foreground">
-            OP SILENT GUARDIAN
-          </span>
+          {/* Mission Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              className={cn(
+                "flex items-center gap-2 font-mono text-sm font-semibold tracking-tight transition-colors",
+                isSAR ? "text-orange-400" : "text-foreground"
+              )}
+            >
+              {currentMission.label}
+              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", dropdownOpen && "rotate-180")} />
+            </button>
+            {dropdownOpen && (
+              <div className="absolute left-0 top-full z-50 mt-1 min-w-56 rounded-md border border-border bg-card shadow-lg">
+                {missions.map((mission) => (
+                  <button
+                    key={mission.id}
+                    onClick={() => {
+                      setMissionMode(mission.mode)
+                      setDropdownOpen(false)
+                    }}
+                    className={cn(
+                      "flex w-full items-center justify-between px-3 py-2 text-left font-mono text-sm transition-colors hover:bg-accent",
+                      missionMode === mission.mode && "bg-primary/10"
+                    )}
+                  >
+                    <span className={cn(
+                      "font-medium",
+                      mission.mode === "sar" ? "text-orange-400" : "text-foreground"
+                    )}>
+                      {mission.label}
+                    </span>
+                    <span className={cn(
+                      "rounded px-1.5 py-0.5 text-[10px] uppercase",
+                      mission.mode === "sar" 
+                        ? "bg-orange-500/20 text-orange-400" 
+                        : "bg-primary/20 text-primary"
+                    )}>
+                      {mission.subtitle}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <div className="h-8 w-px bg-border" />
         <div className="flex items-center gap-4 text-xs">
           <div className="flex items-center gap-1.5">
             <span className="font-mono uppercase text-muted-foreground">Asset:</span>
-            <span className="font-mono font-medium text-foreground">RQ-180 DELTA-7</span>
+            <span className={cn(
+              "font-mono font-medium",
+              isSAR ? "text-orange-400" : "text-foreground"
+            )}>
+              {isSAR ? "SAR-HELO RESCUE-1" : "RQ-180 DELTA-7"}
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="font-mono uppercase text-muted-foreground">Alt:</span>
-            <span className="font-mono font-medium text-foreground">45,000 ft</span>
+            <span className="font-mono font-medium text-foreground">
+              {isSAR ? "8,500 ft" : "45,000 ft"}
+            </span>
           </div>
         </div>
       </div>
@@ -47,8 +108,16 @@ export function TopNav() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Semantic Search — e.g., 'vehicle convoy near checkpoint'"
-            className="h-9 w-full rounded-md border border-border bg-input pl-9 pr-4 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            placeholder={isSAR 
+              ? "Semantic Search — e.g., 'thermal signature near ravine'" 
+              : "Semantic Search — e.g., 'vehicle convoy near checkpoint'"
+            }
+            className={cn(
+              "h-9 w-full rounded-md border bg-input pl-9 pr-4 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1",
+              isSAR 
+                ? "border-orange-500/30 focus:border-orange-500 focus:ring-orange-500" 
+                : "border-border focus:border-primary focus:ring-primary"
+            )}
           />
         </div>
       </div>
@@ -76,13 +145,21 @@ export function TopNav() {
         {/* Notifications */}
         <button className="relative flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
           <Bell className="h-4 w-4" />
-          <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-neon-red" />
+          <span className={cn(
+            "absolute right-1 top-1 h-2 w-2 rounded-full",
+            isSAR ? "bg-orange-500" : "bg-neon-red"
+          )} />
         </button>
 
         {/* Export Button */}
         <Button
           size="sm"
-          className="h-8 gap-2 bg-primary font-mono text-xs uppercase tracking-wide text-primary-foreground hover:bg-primary/90"
+          className={cn(
+            "h-8 gap-2 font-mono text-xs uppercase tracking-wide",
+            isSAR 
+              ? "bg-orange-500 text-white hover:bg-orange-600" 
+              : "bg-primary text-primary-foreground hover:bg-primary/90"
+          )}
         >
           <FileDown className="h-3.5 w-3.5" />
           Export PDF AAR

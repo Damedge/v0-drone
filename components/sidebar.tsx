@@ -49,7 +49,7 @@ export function Sidebar() {
               OVERWATCH
             </span>
             <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              ISR Platform
+              Aerospace
             </span>
           </div>
         )}

@@ -16,11 +16,15 @@ import {
   RotateCcw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useMission } from "@/contexts/mission-context"
 
 export function VideoPlayer() {
+  const { missionMode } = useMission()
   const [isPlaying, setIsPlaying] = useState(true)
   const [currentTime, setCurrentTime] = useState(847) // seconds
   const duration = 1800 // 30 minutes in seconds
+
+  const isSAR = missionMode === "sar"
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -35,24 +39,43 @@ export function VideoPlayer() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-neon-red opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-neon-red" />
+              <span className={cn(
+                "absolute inline-flex h-full w-full animate-ping rounded-full opacity-75",
+                isSAR ? "bg-orange-500" : "bg-neon-red"
+              )} />
+              <span className={cn(
+                "relative inline-flex h-2 w-2 rounded-full",
+                isSAR ? "bg-orange-500" : "bg-neon-red"
+              )} />
             </span>
-            <span className="font-mono text-xs font-semibold uppercase tracking-widest text-neon-red">
+            <span className={cn(
+              "font-mono text-xs font-semibold uppercase tracking-widest",
+              isSAR ? "text-orange-500" : "text-neon-red"
+            )}>
               Live
             </span>
           </div>
           <div className="h-4 w-px bg-border" />
           <span className="font-mono text-xs text-muted-foreground">
-            EO/IR SENSOR ALPHA
+            {isSAR ? "FLIR THERMAL ALPHA" : "EO/IR SENSOR ALPHA"}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <button className="flex h-7 items-center gap-1.5 rounded border border-border bg-secondary px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+          <button className={cn(
+            "flex h-7 items-center gap-1.5 rounded border px-2 text-xs transition-colors",
+            isSAR 
+              ? "border-orange-500/30 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20" 
+              : "border-border bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground"
+          )}>
             <Layers className="h-3 w-3" />
             <span className="font-mono uppercase">Multi-View</span>
           </button>
-          <button className="flex h-7 items-center gap-1.5 rounded border border-border bg-secondary px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+          <button className={cn(
+            "flex h-7 items-center gap-1.5 rounded border px-2 text-xs transition-colors",
+            isSAR 
+              ? "border-orange-500/30 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20" 
+              : "border-border bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground"
+          )}>
             <Camera className="h-3 w-3" />
             <span className="font-mono uppercase">Snapshot</span>
           </button>
@@ -62,7 +85,12 @@ export function VideoPlayer() {
       {/* Video Area */}
       <div className="relative aspect-video bg-background">
         {/* Simulated thermal/IR video feed */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className={cn(
+          "absolute inset-0",
+          isSAR 
+            ? "bg-gradient-to-br from-slate-950 via-orange-950/30 to-slate-900" 
+            : "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"
+        )}>
           {/* Scan lines effect */}
           <div
             className="absolute inset-0 opacity-10"
@@ -76,62 +104,128 @@ export function VideoPlayer() {
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="relative">
               {/* Center crosshair */}
-              <div className="h-40 w-40 rounded-full border border-primary/30" />
-              <div className="absolute left-1/2 top-0 h-8 w-px -translate-x-1/2 bg-primary/50" />
-              <div className="absolute bottom-0 left-1/2 h-8 w-px -translate-x-1/2 bg-primary/50" />
-              <div className="absolute left-0 top-1/2 h-px w-8 -translate-y-1/2 bg-primary/50" />
-              <div className="absolute right-0 top-1/2 h-px w-8 -translate-y-1/2 bg-primary/50" />
-              <div className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/50" />
+              <div className={cn(
+                "h-40 w-40 rounded-full border",
+                isSAR ? "border-orange-500/30" : "border-primary/30"
+              )} />
+              <div className={cn(
+                "absolute left-1/2 top-0 h-8 w-px -translate-x-1/2",
+                isSAR ? "bg-orange-500/50" : "bg-primary/50"
+              )} />
+              <div className={cn(
+                "absolute bottom-0 left-1/2 h-8 w-px -translate-x-1/2",
+                isSAR ? "bg-orange-500/50" : "bg-primary/50"
+              )} />
+              <div className={cn(
+                "absolute left-0 top-1/2 h-px w-8 -translate-y-1/2",
+                isSAR ? "bg-orange-500/50" : "bg-primary/50"
+              )} />
+              <div className={cn(
+                "absolute right-0 top-1/2 h-px w-8 -translate-y-1/2",
+                isSAR ? "bg-orange-500/50" : "bg-primary/50"
+              )} />
+              <div className={cn(
+                "absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full",
+                isSAR ? "bg-orange-500/50" : "bg-primary/50"
+              )} />
             </div>
           </div>
 
-          {/* Target boxes */}
-          <div className="absolute left-[20%] top-[30%]">
-            <div className="h-16 w-24 border-2 border-neon-cyan glow-cyan">
-              <div className="absolute -top-5 left-0 font-mono text-[10px] text-neon-cyan">
-                VEH-01 | TRACKED
+          {/* Target boxes - dynamic based on mode */}
+          {isSAR ? (
+            <>
+              {/* SAR targets */}
+              <div className="absolute left-[20%] top-[30%]">
+                <div className="h-16 w-24 border-2 border-yellow-400" style={{ boxShadow: "0 0 10px rgba(250, 204, 21, 0.5)" }}>
+                  <div className="absolute -top-5 left-0 font-mono text-[10px] text-yellow-400">
+                    THERMAL-01 | WARM
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="absolute right-[25%] top-[45%]">
-            <div className="h-12 w-12 border-2 border-neon-amber glow-amber animate-pulse">
-              <div className="absolute -top-5 left-0 font-mono text-[10px] text-neon-amber">
-                POI-ALPHA | ANOMALY
+              <div className="absolute right-[25%] top-[45%]">
+                <div className="h-12 w-12 border-2 border-orange-500 animate-pulse" style={{ boxShadow: "0 0 10px rgba(249, 115, 22, 0.5)" }}>
+                  <div className="absolute -top-5 left-0 font-mono text-[10px] text-orange-500">
+                    SUBJECT | CONFIRMED
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="absolute bottom-[25%] left-[40%]">
-            <div className="h-14 w-20 border-2 border-neon-red glow-red">
-              <div className="absolute -top-5 left-0 font-mono text-[10px] text-neon-red">
-                TGT-03 | PRIORITY
+              <div className="absolute bottom-[25%] left-[40%]">
+                <div className="h-14 w-20 border-2 border-yellow-500" style={{ boxShadow: "0 0 10px rgba(234, 179, 8, 0.5)" }}>
+                  <div className="absolute -top-5 left-0 font-mono text-[10px] text-yellow-500">
+                    DEBRIS | INTEREST
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            </>
+          ) : (
+            <>
+              {/* Tactical targets */}
+              <div className="absolute left-[20%] top-[30%]">
+                <div className="h-16 w-24 border-2 border-neon-cyan glow-cyan">
+                  <div className="absolute -top-5 left-0 font-mono text-[10px] text-neon-cyan">
+                    VEH-01 | TRACKED
+                  </div>
+                </div>
+              </div>
+              <div className="absolute right-[25%] top-[45%]">
+                <div className="h-12 w-12 border-2 border-neon-amber glow-amber animate-pulse">
+                  <div className="absolute -top-5 left-0 font-mono text-[10px] text-neon-amber">
+                    POI-ALPHA | ANOMALY
+                  </div>
+                </div>
+              </div>
+              <div className="absolute bottom-[25%] left-[40%]">
+                <div className="h-14 w-20 border-2 border-neon-red glow-red">
+                  <div className="absolute -top-5 left-0 font-mono text-[10px] text-neon-red">
+                    TGT-03 | PRIORITY
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* HUD Overlay - Top Left */}
         <div className="absolute left-4 top-4 space-y-1">
-          <div className="font-mono text-[10px] text-primary/80">
-            LAT: 34.0522° N
+          <div className={cn(
+            "font-mono text-[10px]",
+            isSAR ? "text-orange-400/80" : "text-primary/80"
+          )}>
+            LAT: {isSAR ? "39.1261° N" : "34.0522° N"}
           </div>
-          <div className="font-mono text-[10px] text-primary/80">
-            LON: 118.2437° W
+          <div className={cn(
+            "font-mono text-[10px]",
+            isSAR ? "text-orange-400/80" : "text-primary/80"
+          )}>
+            LON: {isSAR ? "106.5701° W" : "118.2437° W"}
           </div>
-          <div className="font-mono text-[10px] text-primary/80">
-            ZOOM: 4.5x
+          <div className={cn(
+            "font-mono text-[10px]",
+            isSAR ? "text-orange-400/80" : "text-primary/80"
+          )}>
+            ZOOM: {isSAR ? "8.0x" : "4.5x"}
           </div>
         </div>
 
         {/* HUD Overlay - Top Right */}
         <div className="absolute right-4 top-4 space-y-1 text-right">
-          <div className="font-mono text-[10px] text-primary/80">
-            HEADING: 045°
+          <div className={cn(
+            "font-mono text-[10px]",
+            isSAR ? "text-orange-400/80" : "text-primary/80"
+          )}>
+            HEADING: {isSAR ? "270°" : "045°"}
           </div>
-          <div className="font-mono text-[10px] text-primary/80">
-            SLANT: 12.4 NM
+          <div className={cn(
+            "font-mono text-[10px]",
+            isSAR ? "text-orange-400/80" : "text-primary/80"
+          )}>
+            SLANT: {isSAR ? "0.8 NM" : "12.4 NM"}
           </div>
-          <div className="font-mono text-[10px] text-primary/80">
-            FOV: 2.1°
+          <div className={cn(
+            "font-mono text-[10px]",
+            isSAR ? "text-orange-400/80" : "text-primary/80"
+          )}>
+            FOV: {isSAR ? "15.0°" : "2.1°"}
           </div>
         </div>
 
@@ -168,7 +262,12 @@ export function VideoPlayer() {
           </button>
           <button
             onClick={() => setIsPlaying(!isPlaying)}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
+            className={cn(
+              "flex h-10 w-10 items-center justify-center rounded-full transition-colors",
+              isSAR 
+                ? "bg-orange-500 text-white hover:bg-orange-600" 
+                : "bg-primary text-primary-foreground hover:bg-primary/90"
+            )}
           >
             {isPlaying ? (
               <Pause className="h-5 w-5" />
@@ -189,27 +288,53 @@ export function VideoPlayer() {
           <div className="relative flex-1">
             <div className="h-1.5 w-full rounded-full bg-secondary">
               <div
-                className="h-full rounded-full bg-primary"
+                className={cn(
+                  "h-full rounded-full",
+                  isSAR ? "bg-orange-500" : "bg-primary"
+                )}
                 style={{ width: `${(currentTime / duration) * 100}%` }}
               />
             </div>
             {/* Event markers on timeline */}
-            <div
-              className="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-neon-amber"
-              style={{ left: "15%" }}
-            />
-            <div
-              className="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-neon-red"
-              style={{ left: "32%" }}
-            />
-            <div
-              className="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-neon-cyan"
-              style={{ left: "58%" }}
-            />
-            <div
-              className="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-neon-amber"
-              style={{ left: "75%" }}
-            />
+            {isSAR ? (
+              <>
+                <div
+                  className="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-yellow-400"
+                  style={{ left: "12%" }}
+                />
+                <div
+                  className="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-orange-500"
+                  style={{ left: "28%" }}
+                />
+                <div
+                  className="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-yellow-500"
+                  style={{ left: "55%" }}
+                />
+                <div
+                  className="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-orange-400"
+                  style={{ left: "82%" }}
+                />
+              </>
+            ) : (
+              <>
+                <div
+                  className="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-neon-amber"
+                  style={{ left: "15%" }}
+                />
+                <div
+                  className="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-neon-red"
+                  style={{ left: "32%" }}
+                />
+                <div
+                  className="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-neon-cyan"
+                  style={{ left: "58%" }}
+                />
+                <div
+                  className="absolute top-1/2 h-3 w-1 -translate-y-1/2 rounded-sm bg-neon-amber"
+                  style={{ left: "75%" }}
+                />
+              </>
+            )}
           </div>
           <span className="font-mono text-xs text-muted-foreground">
             {formatTime(duration)}

@@ -11,8 +11,13 @@ import {
   MapPin,
   ChevronDown,
   Filter,
+  Thermometer,
+  Shirt,
+  Heart,
+  Navigation,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useMission } from "@/contexts/mission-context"
 
 type EventType = "anomaly" | "detection" | "priority" | "movement" | "comms"
 
@@ -26,7 +31,8 @@ interface TimelineEvent {
   coordinates?: string
 }
 
-const events: TimelineEvent[] = [
+// Tactical mission events
+const tacticalEvents: TimelineEvent[] = [
   {
     id: "1",
     timestamp: "00:15",
@@ -100,7 +106,83 @@ const events: TimelineEvent[] = [
   },
 ]
 
-const eventConfig: Record<
+// Search & Rescue mission events
+const sarEvents: TimelineEvent[] = [
+  {
+    id: "sar-1",
+    timestamp: "00:22",
+    type: "detection",
+    title: "Trail Marker Found",
+    description: "Last known hiking trail identified, searching perimeter",
+    confidence: 92,
+    coordinates: "39.1234°N, 106.5678°W",
+  },
+  {
+    id: "sar-2",
+    timestamp: "02:34",
+    type: "anomaly",
+    title: "Thermal Anomaly",
+    description: "Human heat signature detected near ravine edge",
+    confidence: 84,
+    coordinates: "39.1256°N, 106.5692°W",
+  },
+  {
+    id: "sar-3",
+    timestamp: "05:12",
+    type: "priority",
+    title: "High-Vis Color Detected",
+    description: "Subject matched wearing orange jacket - priority verification",
+    confidence: 91,
+    coordinates: "39.1261°N, 106.5701°W",
+  },
+  {
+    id: "sar-4",
+    timestamp: "07:45",
+    type: "movement",
+    title: "Movement Detected",
+    description: "Possible subject movement in tree line, waving pattern",
+    confidence: 78,
+    coordinates: "39.1265°N, 106.5698°W",
+  },
+  {
+    id: "sar-5",
+    timestamp: "10:18",
+    type: "comms",
+    title: "Emergency Signal",
+    description: "PLB beacon ping detected, triangulating position",
+    coordinates: "39.1268°N, 106.5695°W",
+  },
+  {
+    id: "sar-6",
+    timestamp: "13:42",
+    type: "anomaly",
+    title: "Debris Field",
+    description: "Scattered camping equipment visible on ridge",
+    confidence: 88,
+    coordinates: "39.1270°N, 106.5690°W",
+  },
+  {
+    id: "sar-7",
+    timestamp: "16:55",
+    type: "detection",
+    title: "Life Signs Confirmed",
+    description: "IR confirms conscious subject, responsive to aerial signals",
+    confidence: 96,
+    coordinates: "39.1272°N, 106.5688°W",
+  },
+  {
+    id: "sar-8",
+    timestamp: "19:30",
+    type: "priority",
+    title: "Extraction Point Set",
+    description: "LZ marked for helicopter extraction, subject stable",
+    confidence: 99,
+    coordinates: "39.1275°N, 106.5685°W",
+  },
+]
+
+// Tactical event config
+const tacticalEventConfig: Record<
   EventType,
   { icon: typeof AlertTriangle; color: string; bgColor: string }
 > = {
@@ -131,9 +213,48 @@ const eventConfig: Record<
   },
 }
 
+// SAR event config
+const sarEventConfig: Record<
+  EventType,
+  { icon: typeof AlertTriangle; color: string; bgColor: string }
+> = {
+  anomaly: {
+    icon: Thermometer,
+    color: "text-orange-400",
+    bgColor: "bg-orange-400/10",
+  },
+  detection: {
+    icon: Eye,
+    color: "text-yellow-400",
+    bgColor: "bg-yellow-400/10",
+  },
+  priority: {
+    icon: Heart,
+    color: "text-orange-500",
+    bgColor: "bg-orange-500/10",
+  },
+  movement: {
+    icon: Navigation,
+    color: "text-yellow-500",
+    bgColor: "bg-yellow-500/10",
+  },
+  comms: {
+    icon: Radio,
+    color: "text-orange-300",
+    bgColor: "bg-orange-300/10",
+  },
+}
+
 export function EventTimeline() {
-  const [selectedEvent, setSelectedEvent] = useState<string | null>("3")
+  const { missionMode } = useMission()
+  const [selectedEvent, setSelectedEvent] = useState<string | null>(
+    missionMode === "sar" ? "sar-3" : "3"
+  )
   const [filter, setFilter] = useState<EventType | "all">("all")
+
+  const isSAR = missionMode === "sar"
+  const events = isSAR ? sarEvents : tacticalEvents
+  const eventConfig = isSAR ? sarEventConfig : tacticalEventConfig
 
   const filteredEvents =
     filter === "all" ? events : events.filter((e) => e.type === filter)
@@ -146,11 +267,19 @@ export function EventTimeline() {
           <span className="font-mono text-xs font-semibold uppercase tracking-widest text-foreground">
             Event Timeline
           </span>
-          <span className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+          <span className={cn(
+            "rounded px-1.5 py-0.5 font-mono text-[10px]",
+            isSAR ? "bg-orange-500/20 text-orange-400" : "bg-secondary text-muted-foreground"
+          )}>
             {filteredEvents.length}
           </span>
         </div>
-        <button className="flex items-center gap-1 rounded border border-border bg-secondary px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+        <button className={cn(
+          "flex items-center gap-1 rounded border px-2 py-1 text-xs transition-colors hover:text-foreground",
+          isSAR 
+            ? "border-orange-500/30 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20" 
+            : "border-border bg-secondary text-muted-foreground hover:bg-accent"
+        )}>
           <Filter className="h-3 w-3" />
           <span className="font-mono uppercase">Filter</span>
           <ChevronDown className="h-3 w-3" />
@@ -167,8 +296,12 @@ export function EventTimeline() {
               className={cn(
                 "rounded px-2 py-1 font-mono text-[10px] uppercase tracking-wide transition-colors",
                 filter === type
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground"
+                  ? isSAR 
+                    ? "bg-orange-500 text-white" 
+                    : "bg-primary text-primary-foreground"
+                  : isSAR
+                    ? "bg-orange-500/10 text-orange-400 hover:bg-orange-500/20"
+                    : "bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground"
               )}
             >
               {type}
@@ -192,7 +325,9 @@ export function EventTimeline() {
                 className={cn(
                   "w-full rounded-md border p-3 text-left transition-all",
                   isSelected
-                    ? "border-primary bg-primary/5"
+                    ? isSAR 
+                      ? "border-orange-500 bg-orange-500/5" 
+                      : "border-primary bg-primary/5"
                     : "border-transparent bg-secondary/50 hover:border-border hover:bg-secondary"
                 )}
               >
@@ -220,7 +355,13 @@ export function EventTimeline() {
                         <span
                           className={cn(
                             "shrink-0 font-mono text-[10px]",
-                            event.confidence >= 90
+                            isSAR
+                              ? event.confidence >= 90
+                                ? "text-yellow-400"
+                                : event.confidence >= 80
+                                ? "text-orange-400"
+                                : "text-orange-300"
+                              : event.confidence >= 90
                               ? "text-success"
                               : event.confidence >= 80
                               ? "text-neon-amber"
@@ -254,15 +395,21 @@ export function EventTimeline() {
       <div className="flex items-center justify-between border-t border-border px-4 py-2">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full bg-neon-red" />
+            <span className={cn(
+              "h-2 w-2 rounded-full",
+              isSAR ? "bg-orange-500" : "bg-neon-red"
+            )} />
             <span className="font-mono text-[10px] text-muted-foreground">
-              {events.filter((e) => e.type === "priority").length} Priority
+              {events.filter((e) => e.type === "priority").length} {isSAR ? "Critical" : "Priority"}
             </span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full bg-neon-amber" />
+            <span className={cn(
+              "h-2 w-2 rounded-full",
+              isSAR ? "bg-yellow-400" : "bg-neon-amber"
+            )} />
             <span className="font-mono text-[10px] text-muted-foreground">
-              {events.filter((e) => e.type === "anomaly").length} Anomalies
+              {events.filter((e) => e.type === "anomaly").length} {isSAR ? "Thermals" : "Anomalies"}
             </span>
           </div>
         </div>
