@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Search, FileDown, Bell, Wifi, Battery, Signal, ChevronDown, Upload } from "lucide-react"
+import { Search, Bell, Wifi, Battery, Signal, ChevronDown, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useMission, MissionMode } from "@/contexts/mission-context"
 import { cn } from "@/lib/utils"
@@ -174,22 +174,6 @@ export function TopNav({ onUploadClick }: TopNavProps) {
         >
           <Upload className="h-3.5 w-3.5" />
           Upload
-        </Button>
-
-        {/* Export Button */}
-        <Button
-          size="sm"
-          className={cn(
-            "h-8 gap-2 font-mono text-xs uppercase tracking-wide",
-            isIndustrial 
-              ? "bg-emerald-500 text-white hover:bg-emerald-600" 
-              : isSAR 
-                ? "bg-orange-500 text-white hover:bg-orange-600" 
-                : "bg-primary text-primary-foreground hover:bg-primary/90"
-          )}
-        >
-          <FileDown className="h-3.5 w-3.5" />
-          Export PDF AAR
         </Button>
 
         {/* Time */}
