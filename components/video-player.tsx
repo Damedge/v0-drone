@@ -122,30 +122,6 @@ export function VideoPlayer() {
     setActiveEvent(foundEvent || null)
   }, [currentTime, missionData])
 
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video) return
-
-    const handleTimeUpdate = () => setCurrentTime(video.currentTime)
-    const handleDurationChange = () => setDuration(video.duration || 0)
-    const handlePlay = () => setIsPlaying(true)
-    const handlePause = () => setIsPlaying(false)
-
-    video.addEventListener("timeupdate", handleTimeUpdate)
-    video.addEventListener("durationchange", handleDurationChange)
-    video.addEventListener("loadedmetadata", handleDurationChange)
-    video.addEventListener("play", handlePlay)
-    video.addEventListener("pause", handlePause)
-
-    return () => {
-      video.removeEventListener("timeupdate", handleTimeUpdate)
-      video.removeEventListener("durationchange", handleDurationChange)
-      video.removeEventListener("loadedmetadata", handleDurationChange)
-      video.removeEventListener("play", handlePlay)
-      video.removeEventListener("pause", handlePause)
-    }
-  }, [videoRef])
-
   // Reset video when mode changes
   useEffect(() => {
     const video = videoRef.current
@@ -285,6 +261,11 @@ export function VideoPlayer() {
           src={videoSrc}
           muted
           playsInline
+          onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+          onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
+          onDurationChange={(e) => setDuration(e.currentTarget.duration || 0)}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
         />
 
         {/* CS:GO ESP Tactical Bounding Box */}
