@@ -13,10 +13,20 @@ import {
   Layers,
   ZoomIn,
   ZoomOut,
-  RotateCcw,
+  RotateCw,
+  X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useMission, MissionEvent } from "@/contexts/mission-context"
+
+// Marker interface for crosshair points
+interface Marker {
+  id: string
+  x: number // percentage 0-100
+  y: number // percentage 0-100
+  timestampSec: number
+  durationSec: number
+}
 
 // Tactical bounding box overlay component
 function TacticalBoundingBox({ 
@@ -31,7 +41,6 @@ function TacticalBoundingBox({
   const { x_pct, y_pct, width_pct, height_pct } = event.target_box
   const borderColor = isSAR ? "border-yellow-400" : "border-red-500"
   const glowColor = isSAR ? "shadow-yellow-400/50" : "shadow-red-500/50"
-  const textColor = isSAR ? "text-yellow-400" : "text-red-500"
   const bgColor = isSAR ? "bg-yellow-400/20" : "bg-red-500/20"
   const labelBg = isSAR ? "bg-yellow-400" : "bg-red-500"
 
@@ -92,6 +101,46 @@ function TacticalBoundingBox({
   )
 }
 
+// User-placed marker component
+function UserMarker({ marker, isSAR }: { marker: Marker; isSAR: boolean }) {
+  return (
+    <div
+      className="absolute pointer-events-none"
+      style={{
+        left: `${marker.x}%`,
+        top: `${marker.y}%`,
+        transform: "translate(-50%, -50%)",
+      }}
+    >
+      {/* Outer pulse ring */}
+      <div className={cn(
+        "absolute inset-0 h-8 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full animate-ping opacity-50",
+        isSAR ? "bg-yellow-400/30" : "bg-cyan-400/30"
+      )} />
+      {/* Main crosshair */}
+      <div className={cn(
+        "relative h-8 w-8 -translate-x-1/2 -translate-y-1/2",
+      )}>
+        {/* Vertical line */}
+        <div className={cn(
+          "absolute left-1/2 top-0 h-full w-0.5 -translate-x-1/2",
+          isSAR ? "bg-yellow-400" : "bg-cyan-400"
+        )} />
+        {/* Horizontal line */}
+        <div className={cn(
+          "absolute left-0 top-1/2 h-0.5 w-full -translate-y-1/2",
+          isSAR ? "bg-yellow-400" : "bg-cyan-400"
+        )} />
+        {/* Center dot */}
+        <div className={cn(
+          "absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full",
+          isSAR ? "bg-yellow-400" : "bg-cyan-400"
+        )} />
+      </div>
+    </div>
+  )
+}
+
 export function VideoPlayer() {
   const { missionMode, videoRef, missionData } = useMission()
   const [isPlaying, setIsPlaying] = useState(false)
@@ -99,6 +148,14 @@ export function VideoPlayer() {
   const [duration, setDuration] = useState(0)
   const [activeEvent, setActiveEvent] = useState<MissionEvent | null>(null)
   const playPromiseRef = useRef<Promise<void> | null>(null)
+  const videoContainerRef = useRef<HTMLDivElement | null>(null)
+
+  // Zoom/Rotate/Marker state
+  const [zoomLevel, setZoomLevel] = useState(1)
+  const [rotation, setRotation] = useState(0)
+  const [markMode, setMarkMode] = useState(false)
+  const [markerDuration, setMarkerDuration] = useState(3) // seconds
+  const [markers, setMarkers] = useState<Marker[]>([])
 
   const isSAR = missionMode === "sar"
   const videoSrc = isSAR ? "/videos/searchForPeople.mp4" : "/videos/battlefield.mp4"
@@ -120,6 +177,11 @@ export function VideoPlayer() {
     setActiveEvent(foundEvent || null)
   }, [currentTime, missionData])
 
+  // Filter markers to show only those within their display window
+  const visibleMarkers = markers.filter((marker) => {
+    return currentTime >= marker.timestampSec && currentTime <= marker.timestampSec + marker.durationSec
+  })
+
   // Reset video when mode changes
   useEffect(() => {
     const video = videoRef.current
@@ -129,6 +191,9 @@ export function VideoPlayer() {
       setCurrentTime(0)
       setIsPlaying(false)
       setActiveEvent(null)
+      setZoomLevel(1)
+      setRotation(0)
+      setMarkers([])
     }
   }, [missionMode, videoRef])
 
@@ -136,7 +201,6 @@ export function VideoPlayer() {
     const video = videoRef.current
     if (!video) return
 
-    // Wait for any pending play promise to resolve before playing again
     if (playPromiseRef.current) {
       try {
         await playPromiseRef.current
@@ -149,7 +213,6 @@ export function VideoPlayer() {
       playPromiseRef.current = video.play()
       await playPromiseRef.current
     } catch (error) {
-      // Ignore AbortError - happens when play is interrupted
       if (error instanceof Error && error.name !== "AbortError") {
         console.error("Video play error:", error)
       }
@@ -162,7 +225,6 @@ export function VideoPlayer() {
     const video = videoRef.current
     if (!video) return
 
-    // Wait for any pending play promise before pausing
     if (playPromiseRef.current) {
       try {
         await playPromiseRef.current
@@ -203,6 +265,45 @@ export function VideoPlayer() {
     if (video) video.currentTime = Math.min(duration, video.currentTime + 10)
   }
 
+  // Zoom controls
+  const handleZoomIn = () => {
+    setZoomLevel((prev) => Math.min(prev + 0.25, 3))
+  }
+
+  const handleZoomOut = () => {
+    setZoomLevel((prev) => Math.max(prev - 0.25, 1))
+  }
+
+  // Rotate control (90 degree increments)
+  const handleRotate = () => {
+    setRotation((prev) => (prev + 90) % 360)
+  }
+
+  // Toggle mark mode
+  const toggleMarkMode = () => {
+    setMarkMode((prev) => !prev)
+  }
+
+  // Handle video area click for placing markers
+  const handleVideoAreaClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!markMode) return
+
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = ((e.clientX - rect.left) / rect.width) * 100
+    const y = ((e.clientY - rect.top) / rect.height) * 100
+
+    const newMarker: Marker = {
+      id: `marker-${Date.now()}`,
+      x,
+      y,
+      timestampSec: currentTime,
+      durationSec: markerDuration,
+    }
+
+    setMarkers((prev) => [...prev, newMarker])
+    setMarkMode(false) // Exit mark mode after placing
+  }
+
   return (
     <div className="flex flex-col rounded-lg border border-border bg-card">
       {/* Video Header */}
@@ -228,6 +329,18 @@ export function VideoPlayer() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {/* Zoom indicator */}
+          {zoomLevel !== 1 && (
+            <span className="font-mono text-[10px] text-muted-foreground">
+              {zoomLevel.toFixed(2)}x
+            </span>
+          )}
+          {/* Rotation indicator */}
+          {rotation !== 0 && (
+            <span className="font-mono text-[10px] text-muted-foreground">
+              {rotation}°
+            </span>
+          )}
           <button className={cn(
             "flex h-7 items-center gap-1.5 rounded border px-2 text-xs transition-colors",
             isSAR 
@@ -250,12 +363,22 @@ export function VideoPlayer() {
       </div>
 
       {/* Video Area with Bounding Box Overlay */}
-      <div className="relative aspect-video bg-background overflow-hidden">
-        {/* Real Video Element */}
+      <div 
+        ref={videoContainerRef}
+        className={cn(
+          "relative aspect-video bg-background overflow-hidden",
+          markMode && "cursor-crosshair"
+        )}
+        onClick={handleVideoAreaClick}
+      >
+        {/* Real Video Element with zoom and rotation transforms */}
         <video
           ref={videoRef}
           key={videoSrc}
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-300"
+          style={{
+            transform: `scale(${zoomLevel}) rotate(${rotation}deg)`,
+          }}
           src={videoSrc}
           muted
           playsInline
@@ -273,8 +396,20 @@ export function VideoPlayer() {
           </div>
         )}
 
+        {/* User-placed markers - z-20 ensures they render above everything */}
+        <div className="absolute inset-0 z-20 pointer-events-none">
+          {visibleMarkers.map((marker) => (
+            <UserMarker key={marker.id} marker={marker} isSAR={isSAR} />
+          ))}
+        </div>
+
+        {/* Mark mode indicator */}
+        {markMode && (
+          <div className="absolute inset-0 z-30 pointer-events-none border-4 border-dashed border-cyan-400/50 animate-pulse" />
+        )}
+
         {/* HUD Overlay - Top Left */}
-        <div className="absolute left-4 top-4 space-y-1 pointer-events-none">
+        <div className="absolute left-4 top-4 space-y-1 pointer-events-none z-10">
           <div className={cn(
             "font-mono text-[10px]",
             isSAR ? "text-orange-400/80" : "text-primary/80"
@@ -291,12 +426,12 @@ export function VideoPlayer() {
             "font-mono text-[10px]",
             isSAR ? "text-orange-400/80" : "text-primary/80"
           )}>
-            ZOOM: {isSAR ? "8.0x" : "4.5x"}
+            ZOOM: {zoomLevel.toFixed(1)}x
           </div>
         </div>
 
         {/* HUD Overlay - Top Right */}
-        <div className="absolute right-4 top-4 space-y-1 text-right pointer-events-none">
+        <div className="absolute right-4 top-4 space-y-1 text-right pointer-events-none z-10">
           <div className={cn(
             "font-mono text-[10px]",
             isSAR ? "text-orange-400/80" : "text-primary/80"
@@ -313,14 +448,14 @@ export function VideoPlayer() {
             "font-mono text-[10px]",
             isSAR ? "text-orange-400/80" : "text-primary/80"
           )}>
-            FOV: {isSAR ? "15.0°" : "2.1°"}
+            ROT: {rotation}°
           </div>
         </div>
 
         {/* Active Target Indicator */}
         {activeEvent && (
           <div className={cn(
-            "absolute bottom-4 left-4 flex items-center gap-2 rounded px-2 py-1 pointer-events-none",
+            "absolute bottom-4 left-4 flex items-center gap-2 rounded px-2 py-1 pointer-events-none z-10",
             isSAR ? "bg-yellow-400/20 border border-yellow-400/50" : "bg-red-500/20 border border-red-500/50"
           )}>
             <span className={cn(
@@ -346,27 +481,77 @@ export function VideoPlayer() {
 
         {/* Timecode when no active target */}
         {!activeEvent && (
-          <div className="absolute bottom-4 left-4 pointer-events-none">
+          <div className="absolute bottom-4 left-4 pointer-events-none z-10">
             <div className="font-mono text-xs font-semibold text-foreground/80">
               {formatTime(currentTime)} / {formatTime(duration)}
             </div>
           </div>
         )}
 
-        {/* Zoom Controls - Right Side */}
-        <div className="absolute right-4 top-1/2 flex -translate-y-1/2 flex-col gap-1">
-          <button className="flex h-8 w-8 items-center justify-center rounded bg-background/50 text-foreground/70 backdrop-blur transition-colors hover:bg-background/70 hover:text-foreground">
+        {/* Zoom/Rotate/Mark Controls - Right Side */}
+        <div className="absolute right-4 top-1/2 flex -translate-y-1/2 flex-col gap-1 z-30">
+          <button 
+            onClick={(e) => { e.stopPropagation(); handleZoomIn(); }}
+            className={cn(
+              "flex h-8 w-8 items-center justify-center rounded backdrop-blur transition-colors",
+              zoomLevel >= 3 
+                ? "bg-background/30 text-foreground/30 cursor-not-allowed" 
+                : "bg-background/50 text-foreground/70 hover:bg-background/70 hover:text-foreground"
+            )}
+            disabled={zoomLevel >= 3}
+          >
             <ZoomIn className="h-4 w-4" />
           </button>
-          <button className="flex h-8 w-8 items-center justify-center rounded bg-background/50 text-foreground/70 backdrop-blur transition-colors hover:bg-background/70 hover:text-foreground">
+          <button 
+            onClick={(e) => { e.stopPropagation(); handleZoomOut(); }}
+            className={cn(
+              "flex h-8 w-8 items-center justify-center rounded backdrop-blur transition-colors",
+              zoomLevel <= 1 
+                ? "bg-background/30 text-foreground/30 cursor-not-allowed" 
+                : "bg-background/50 text-foreground/70 hover:bg-background/70 hover:text-foreground"
+            )}
+            disabled={zoomLevel <= 1}
+          >
             <ZoomOut className="h-4 w-4" />
           </button>
-          <button className="flex h-8 w-8 items-center justify-center rounded bg-background/50 text-foreground/70 backdrop-blur transition-colors hover:bg-background/70 hover:text-foreground">
-            <RotateCcw className="h-4 w-4" />
+          <button 
+            onClick={(e) => { e.stopPropagation(); handleRotate(); }}
+            className="flex h-8 w-8 items-center justify-center rounded bg-background/50 text-foreground/70 backdrop-blur transition-colors hover:bg-background/70 hover:text-foreground"
+          >
+            <RotateCw className="h-4 w-4" />
           </button>
-          <button className="flex h-8 w-8 items-center justify-center rounded bg-background/50 text-foreground/70 backdrop-blur transition-colors hover:bg-background/70 hover:text-foreground">
-            <Crosshair className="h-4 w-4" />
+          <div className="h-px w-full bg-foreground/20 my-1" />
+          <button 
+            onClick={(e) => { e.stopPropagation(); toggleMarkMode(); }}
+            className={cn(
+              "flex h-8 w-8 items-center justify-center rounded backdrop-blur transition-colors",
+              markMode 
+                ? isSAR 
+                  ? "bg-yellow-400 text-black" 
+                  : "bg-cyan-400 text-black"
+                : "bg-background/50 text-foreground/70 hover:bg-background/70 hover:text-foreground"
+            )}
+          >
+            {markMode ? <X className="h-4 w-4" /> : <Crosshair className="h-4 w-4" />}
           </button>
+          {/* Marker duration selector - only show when mark mode is active */}
+          {markMode && (
+            <div className="flex flex-col items-center gap-1 mt-1 bg-background/70 rounded p-1 backdrop-blur">
+              <span className="font-mono text-[8px] text-foreground/70 uppercase">Dur</span>
+              <select
+                value={markerDuration}
+                onChange={(e) => setMarkerDuration(Number(e.target.value))}
+                onClick={(e) => e.stopPropagation()}
+                className="w-10 h-6 text-[10px] font-mono bg-background border border-border rounded text-center text-foreground cursor-pointer"
+              >
+                <option value={1}>1s</option>
+                <option value={3}>3s</option>
+                <option value={5}>5s</option>
+                <option value={10}>10s</option>
+                <option value={30}>30s</option>
+              </select>
+            </div>
+          )}
         </div>
       </div>
 
@@ -433,6 +618,20 @@ export function VideoPlayer() {
                   left: duration ? `${(event.timestamp_ms / 1000 / duration) * 100}%` : "0%"
                 }}
                 title={event.title}
+              />
+            ))}
+            {/* User marker indicators on timeline */}
+            {markers.map((marker) => (
+              <div
+                key={marker.id}
+                className={cn(
+                  "absolute top-1/2 h-2 w-2 -translate-y-1/2 rounded-full",
+                  isSAR ? "bg-yellow-400" : "bg-cyan-400"
+                )}
+                style={{
+                  left: duration ? `${(marker.timestampSec / duration) * 100}%` : "0%"
+                }}
+                title={`Marker at ${formatTime(marker.timestampSec)}`}
               />
             ))}
           </div>
