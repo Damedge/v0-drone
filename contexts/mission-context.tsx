@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useRef, useEffect, ReactNode, RefObject } from "react"
 
-export type MissionMode = "tactical" | "sar"
+export type MissionMode = "tactical" | "sar" | "industrial"
 export type ActiveView = "hub" | "analysis" | "statistics" | "aar"
 
 export interface TargetBox {

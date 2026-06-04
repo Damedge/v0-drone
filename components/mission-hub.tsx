@@ -32,7 +32,7 @@ const processingSteps = [
 ]
 
 export function MissionHub() {
-  const { setActiveView, setMissionData, setIsDataLoaded, setVideoFileName, setTelemetryFileName } = useMission()
+  const { missionMode, setActiveView, setMissionData, setIsDataLoaded, setVideoFileName, setTelemetryFileName } = useMission()
   const [hubState, setHubState] = useState<HubState>("entry")
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [telemetryFile, setTelemetryFile] = useState<File | null>(null)
@@ -88,9 +88,14 @@ export function MissionHub() {
     if (videoFile) setVideoFileName(videoFile.name)
     if (telemetryFile) setTelemetryFileName(telemetryFile.name)
 
-    // Load mock mission data for the selected drone
+    // Load mock mission data for the selected drone - respects current mission mode
     try {
-      const response = await fetch("/data/results_tactical.json")
+      const dataUrl = missionMode === "industrial" 
+        ? "/data/results_industrial.json"
+        : missionMode === "sar"
+          ? "/data/results_sar.json"
+          : "/data/results_tactical.json"
+      const response = await fetch(dataUrl)
       if (response.ok) {
         const rawData = await response.json()
         const mappedData: MissionEvent[] = rawData.map((item: Record<string, unknown>, index: number) => ({

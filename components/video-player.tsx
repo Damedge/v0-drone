@@ -41,14 +41,17 @@ interface FleetAsset {
 
 const tacticalFleet: FleetAsset[] = [
   { id: "drone1", name: "Drone 1", sensorType: "FLIR", thumbnail: "/videos/battlefield.mp4", videoSrc: "/videos/battlefield.mp4" },
-  { id: "drone2", name: "Drone 2", sensorType: "RGB", thumbnail: "/videos/battlefield.mp4", videoSrc: "/videos/battlefield.mp4" },
-  { id: "drone3", name: "Drone 3", sensorType: "OVERWATCH", thumbnail: "/videos/battlefield.mp4", videoSrc: "/videos/battlefield.mp4" },
+  { id: "drone2", name: "Drone 2", sensorType: "RGB", thumbnail: "/videos/battle2.mp4", videoSrc: "/videos/battle2.mp4" },
 ]
 
 const sarFleet: FleetAsset[] = [
   { id: "drone1", name: "Drone 1", sensorType: "FLIR", thumbnail: "/videos/searchForPeople.mp4", videoSrc: "/videos/searchForPeople.mp4" },
   { id: "drone2", name: "Drone 2", sensorType: "RGB", thumbnail: "/videos/searchForPeople.mp4", videoSrc: "/videos/searchForPeople.mp4" },
-  { id: "drone3", name: "Drone 3", sensorType: "THERMAL", thumbnail: "/videos/searchForPeople.mp4", videoSrc: "/videos/searchForPeople.mp4" },
+]
+
+const industrialFleet: FleetAsset[] = [
+  { id: "drone1", name: "Inspector 1", sensorType: "4K RGB", thumbnail: "/videos/turbine_flight.mp4", videoSrc: "/videos/turbine_flight.mp4" },
+  { id: "drone2", name: "Inspector 2", sensorType: "THERMAL", thumbnail: "/videos/turbine_flight.mp4", videoSrc: "/videos/turbine_flight.mp4" },
 ]
 
 // Telemetry interface
@@ -142,14 +145,17 @@ export function VideoPlayer() {
   const [boxDragStart, setBoxDragStart] = useState({ x: 0, y: 0 })
 
   const isSAR = missionMode === "sar"
-  const fleet = isSAR ? sarFleet : tacticalFleet
+  const isIndustrial = missionMode === "industrial"
+  const fleet = isIndustrial ? industrialFleet : isSAR ? sarFleet : tacticalFleet
   const activeAsset = fleet.find(a => a.id === activeAssetId) || fleet[0]
   const videoSrc = activeAsset.videoSrc
 
   // Base telemetry values per mode
-  const baseTelemetry = isSAR 
-    ? { lat: -37.8109, lon: 144.9672, heading: 270, alt: 850 }
-    : { lat: -17.8132, lon: 74.9637, heading: 45, alt: 12400 }
+  const baseTelemetry = isIndustrial
+    ? { lat: -37.8105, lon: 144.9675, heading: 180, alt: 450 }
+    : isSAR 
+      ? { lat: -37.8109, lon: 144.9672, heading: 270, alt: 850 }
+      : { lat: -17.8132, lon: 74.9637, heading: 45, alt: 12400 }
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -388,18 +394,28 @@ export function VideoPlayer() {
 
     // After 3 seconds, complete training
     setTimeout(async () => {
-      const timestampMs = currentTime * 1000
+      // For Industrial mode, inject event at future timestamp with target_box
+      const isIndustrialMode = missionMode === "industrial"
+      const timestampMs = isIndustrialMode ? 25000 : currentTime * 1000
+      const eventTitle = isIndustrialMode 
+        ? `ANOMALY DETECTED: '${annotationLabel.trim()}' identified on Blade C`
+        : annotationLabel.trim()
 
-      // Create new mission event
+      // Create new mission event with target_box for industrial
       const newEvent: MissionEvent = {
         id: `user-trained-${Date.now()}`,
         timestamp_ms: timestampMs,
-        title: annotationLabel.trim(),
+        title: eventTitle,
         category: "USER-TRAINED",
         description: `Operator-annotated anomaly: ${annotationLabel.trim()}. Trained at ${new Date().toLocaleTimeString()}.`,
-        threat_level: isSAR ? undefined : "high",
-        confidence: isSAR ? 0.99 : undefined,
-        coordinates: { lat: telemetry.lat, lon: telemetry.lon },
+        threat_level: isSAR ? undefined : isIndustrialMode ? undefined : "high",
+        confidence: isIndustrialMode ? 0.91 : isSAR ? 0.99 : undefined,
+        coordinates: isIndustrialMode 
+          ? { lat: -37.8105, lon: 144.9675 }
+          : { lat: telemetry.lat, lon: telemetry.lon },
+        target_box: isIndustrialMode 
+          ? { x_pct: 0.6, y_pct: 0.4, width_pct: 0.1, height_pct: 0.15 }
+          : undefined,
       }
 
       // Create trained annotation for statistics
@@ -530,19 +546,19 @@ export function VideoPlayer() {
             <span className="relative flex h-2 w-2">
               <span className={cn(
                 "relative inline-flex h-2 w-2 rounded-full",
-                isSAR ? "bg-orange-500" : "bg-muted-foreground"
+                isIndustrial ? "bg-emerald-500" : isSAR ? "bg-orange-500" : "bg-muted-foreground"
               )} />
             </span>
             <span className={cn(
               "font-mono text-xs font-semibold uppercase tracking-widest",
-              isSAR ? "text-orange-500" : "text-muted-foreground"
+              isIndustrial ? "text-emerald-500" : isSAR ? "text-orange-500" : "text-muted-foreground"
             )}>
-              Archived
+              {isIndustrial ? "Live" : "Archived"}
             </span>
           </div>
           <div className="h-4 w-px bg-border" />
           <span className="font-mono text-xs text-muted-foreground">
-            {isSAR ? "FLIR THERMAL ALPHA" : "EO/IR SENSOR ALPHA"}
+            {isIndustrial ? "4K RGB INSPECTION" : isSAR ? "FLIR THERMAL ALPHA" : "EO/IR SENSOR ALPHA"}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -569,9 +585,11 @@ export function VideoPlayer() {
             onClick={handleSnapshot}
             className={cn(
               "flex h-7 items-center gap-1.5 rounded border px-2 text-xs transition-colors",
-              isSAR 
-                ? "border-orange-500/30 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20" 
-                : "border-border bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground"
+              isIndustrial 
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20" 
+                : isSAR 
+                  ? "border-orange-500/30 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20" 
+                  : "border-border bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground"
             )}
           >
             <Camera className="h-3 w-3" />
@@ -582,9 +600,11 @@ export function VideoPlayer() {
             disabled={annotationState !== "idle"}
             className={cn(
               "flex h-7 items-center gap-1.5 rounded border px-2 text-xs transition-colors",
-              isSAR 
-                ? "border-orange-500/30 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20" 
-                : "border-primary/30 bg-primary/10 text-primary hover:bg-primary/20",
+              isIndustrial 
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20" 
+                : isSAR 
+                  ? "border-orange-500/30 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20" 
+                  : "border-primary/30 bg-primary/10 text-primary hover:bg-primary/20",
               annotationState !== "idle" && "opacity-50 cursor-not-allowed"
             )}
           >
@@ -664,7 +684,7 @@ export function VideoPlayer() {
             <div
               className={cn(
                 "absolute w-32 h-24 border-2 border-dashed cursor-move transition-colors",
-                isSAR ? "border-orange-500" : "border-red-500"
+                isIndustrial ? "border-emerald-500" : isSAR ? "border-orange-500" : "border-red-500"
               )}
               style={{
                 left: `${annotationBoxPosition.x}%`,
@@ -674,14 +694,14 @@ export function VideoPlayer() {
               onMouseDown={handleBoxDragStart}
             >
               {/* Corner brackets */}
-              <div className={cn("absolute -left-1 -top-1 h-3 w-3 border-l-2 border-t-2", isSAR ? "border-orange-500" : "border-red-500")} />
-              <div className={cn("absolute -right-1 -top-1 h-3 w-3 border-r-2 border-t-2", isSAR ? "border-orange-500" : "border-red-500")} />
-              <div className={cn("absolute -bottom-1 -left-1 h-3 w-3 border-b-2 border-l-2", isSAR ? "border-orange-500" : "border-red-500")} />
-              <div className={cn("absolute -bottom-1 -right-1 h-3 w-3 border-b-2 border-r-2", isSAR ? "border-orange-500" : "border-red-500")} />
+              <div className={cn("absolute -left-1 -top-1 h-3 w-3 border-l-2 border-t-2", isIndustrial ? "border-emerald-500" : isSAR ? "border-orange-500" : "border-red-500")} />
+              <div className={cn("absolute -right-1 -top-1 h-3 w-3 border-r-2 border-t-2", isIndustrial ? "border-emerald-500" : isSAR ? "border-orange-500" : "border-red-500")} />
+              <div className={cn("absolute -bottom-1 -left-1 h-3 w-3 border-b-2 border-l-2", isIndustrial ? "border-emerald-500" : isSAR ? "border-orange-500" : "border-red-500")} />
+              <div className={cn("absolute -bottom-1 -right-1 h-3 w-3 border-b-2 border-r-2", isIndustrial ? "border-emerald-500" : isSAR ? "border-orange-500" : "border-red-500")} />
               {/* Center crosshair */}
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                <div className={cn("h-4 w-0.5", isSAR ? "bg-orange-500/50" : "bg-red-500/50")} />
-                <div className={cn("absolute left-1/2 top-1/2 h-0.5 w-4 -translate-x-1/2 -translate-y-1/2", isSAR ? "bg-orange-500/50" : "bg-red-500/50")} />
+                <div className={cn("h-4 w-0.5", isIndustrial ? "bg-emerald-500/50" : isSAR ? "bg-orange-500/50" : "bg-red-500/50")} />
+                <div className={cn("absolute left-1/2 top-1/2 h-0.5 w-4 -translate-x-1/2 -translate-y-1/2", isIndustrial ? "bg-emerald-500/50" : isSAR ? "bg-orange-500/50" : "bg-red-500/50")} />
               </div>
             </div>
 
@@ -689,7 +709,7 @@ export function VideoPlayer() {
             <div 
               className={cn(
                 "absolute rounded-lg border p-4 backdrop-blur-sm",
-                isSAR ? "border-orange-500/50 bg-orange-950/90" : "border-primary/50 bg-slate-900/90"
+                isIndustrial ? "border-emerald-500/50 bg-emerald-950/90" : isSAR ? "border-orange-500/50 bg-orange-950/90" : "border-primary/50 bg-slate-900/90"
               )}
               style={{
                 left: `${Math.min(annotationBoxPosition.x + 10, 70)}%`,
@@ -700,16 +720,19 @@ export function VideoPlayer() {
             >
               <p className={cn(
                 "font-mono text-[10px] uppercase tracking-widest mb-2",
-                isSAR ? "text-orange-400" : "text-primary"
+                isIndustrial ? "text-emerald-400" : isSAR ? "text-orange-400" : "text-primary"
               )}>
-                Identify Unknown Anomaly
+                {isIndustrial ? "Identify Blade Anomaly" : "Identify Unknown Anomaly"}
               </p>
               <input
                 type="text"
                 value={annotationLabel}
                 onChange={(e) => setAnnotationLabel(e.target.value)}
-                placeholder="e.g., Improvised Truck"
-                className="w-48 h-8 px-2 font-mono text-xs bg-background border border-border rounded text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                placeholder={isIndustrial ? "e.g., Cracked Leading Edge" : "e.g., Improvised Truck"}
+                className={cn(
+                  "w-48 h-8 px-2 font-mono text-xs bg-background border border-border rounded text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1",
+                  isIndustrial ? "focus:ring-emerald-500" : "focus:ring-primary"
+                )}
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === "Enter") submitAnnotation()
@@ -722,9 +745,11 @@ export function VideoPlayer() {
                   disabled={!annotationLabel.trim()}
                   className={cn(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded font-mono text-[10px] uppercase tracking-wide transition-colors",
-                    isSAR 
-                      ? "bg-orange-500 text-white hover:bg-orange-600" 
-                      : "bg-primary text-primary-foreground hover:bg-primary/90",
+                    isIndustrial 
+                      ? "bg-emerald-500 text-white hover:bg-emerald-600" 
+                      : isSAR 
+                        ? "bg-orange-500 text-white hover:bg-orange-600" 
+                        : "bg-primary text-primary-foreground hover:bg-primary/90",
                     !annotationLabel.trim() && "opacity-50 cursor-not-allowed"
                   )}
                 >
@@ -747,11 +772,11 @@ export function VideoPlayer() {
           <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/60">
             <Loader2 className={cn(
               "h-12 w-12 animate-spin mb-4",
-              isSAR ? "text-orange-500" : "text-primary"
+              isIndustrial ? "text-emerald-500" : isSAR ? "text-orange-500" : "text-primary"
             )} />
             <p className={cn(
               "font-mono text-sm uppercase tracking-widest animate-pulse",
-              isSAR ? "text-orange-400" : "text-primary"
+              isIndustrial ? "text-emerald-400" : isSAR ? "text-orange-400" : "text-primary"
             )}>
               {trainingText}
             </p>
@@ -762,19 +787,19 @@ export function VideoPlayer() {
         <div className="absolute left-4 top-4 space-y-1 pointer-events-none z-10">
           <div className={cn(
             "font-mono text-[10px]",
-            isSAR ? "text-orange-400/80" : "text-primary/80"
+            isIndustrial ? "text-emerald-400/80" : isSAR ? "text-orange-400/80" : "text-primary/80"
           )}>
             LAT: {telemetry.lat.toFixed(4)}° {isSAR ? "S" : "N"}
           </div>
           <div className={cn(
             "font-mono text-[10px]",
-            isSAR ? "text-orange-400/80" : "text-primary/80"
+            isIndustrial ? "text-emerald-400/80" : isSAR ? "text-orange-400/80" : "text-primary/80"
           )}>
             LON: {Math.abs(telemetry.lon).toFixed(4)}° E
           </div>
           <div className={cn(
             "font-mono text-[10px]",
-            isSAR ? "text-orange-400/80" : "text-primary/80"
+            isIndustrial ? "text-emerald-400/80" : isSAR ? "text-orange-400/80" : "text-primary/80"
           )}>
             ALT: {telemetry.alt.toFixed(0)} FT
           </div>
@@ -784,19 +809,19 @@ export function VideoPlayer() {
         <div className="absolute right-4 top-4 space-y-1 text-right pointer-events-none z-10">
           <div className={cn(
             "font-mono text-[10px]",
-            isSAR ? "text-orange-400/80" : "text-primary/80"
+            isIndustrial ? "text-emerald-400/80" : isSAR ? "text-orange-400/80" : "text-primary/80"
           )}>
             HEADING: {telemetry.heading.toFixed(0)}°
           </div>
           <div className={cn(
             "font-mono text-[10px]",
-            isSAR ? "text-orange-400/80" : "text-primary/80"
+            isIndustrial ? "text-emerald-400/80" : isSAR ? "text-orange-400/80" : "text-primary/80"
           )}>
             ZOOM: {zoomLevel.toFixed(1)}x
           </div>
           <div className={cn(
             "font-mono text-[10px]",
-            isSAR ? "text-orange-400/80" : "text-primary/80"
+            isIndustrial ? "text-emerald-400/80" : isSAR ? "text-orange-400/80" : "text-primary/80"
           )}>
             ROT: {rotation}°
           </div>
@@ -847,9 +872,11 @@ export function VideoPlayer() {
             className={cn(
               "flex h-8 w-8 items-center justify-center rounded backdrop-blur transition-colors",
               markMode 
-                ? isSAR 
-                  ? "bg-yellow-400 text-black" 
-                  : "bg-cyan-400 text-black"
+                ? isIndustrial
+                  ? "bg-emerald-400 text-black"
+                  : isSAR 
+                    ? "bg-yellow-400 text-black" 
+                    : "bg-cyan-400 text-black"
                 : "bg-background/50 text-foreground/70 hover:bg-background/70 hover:text-foreground"
             )}
           >
@@ -890,9 +917,11 @@ export function VideoPlayer() {
             onClick={togglePlayPause}
             className={cn(
               "flex h-10 w-10 items-center justify-center rounded-full transition-colors",
-              isSAR 
-                ? "bg-orange-500 text-white hover:bg-orange-600" 
-                : "bg-primary text-primary-foreground hover:bg-primary/90"
+              isIndustrial 
+                ? "bg-emerald-500 text-white hover:bg-emerald-600" 
+                : isSAR 
+                  ? "bg-orange-500 text-white hover:bg-orange-600" 
+                  : "bg-primary text-primary-foreground hover:bg-primary/90"
             )}
           >
             {isPlaying ? (
@@ -979,7 +1008,7 @@ export function VideoPlayer() {
       <div className="border-t border-border px-4 py-2">
         <div className="flex items-center gap-3 mb-2">
           <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Mission Assets (Fleet)
+            {isIndustrial ? "Inspection Assets" : "Mission Assets (Fleet)"}
           </span>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1">
@@ -992,22 +1021,24 @@ export function VideoPlayer() {
                 className={cn(
                   "relative flex-shrink-0 w-28 rounded-md overflow-hidden border-2 transition-all",
                   isActive
-                    ? isSAR
-                      ? "border-orange-500 shadow-[0_0_12px_rgba(249,115,22,0.4)]"
-                      : "border-primary shadow-[0_0_12px_rgba(0,255,255,0.3)]"
+                    ? isIndustrial
+                      ? "border-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.4)]"
+                      : isSAR
+                        ? "border-orange-500 shadow-[0_0_12px_rgba(249,115,22,0.4)]"
+                        : "border-primary shadow-[0_0_12px_rgba(0,255,255,0.3)]"
                     : "border-border hover:border-muted-foreground/50"
                 )}
               >
                 {/* Thumbnail - using video poster or solid color */}
                 <div className={cn(
                   "aspect-video",
-                  isSAR ? "bg-orange-950/50" : "bg-slate-900"
+                  isIndustrial ? "bg-emerald-950/50" : isSAR ? "bg-orange-950/50" : "bg-slate-900"
                 )}>
                   <div className="flex h-full items-center justify-center">
                     <div className={cn(
                       "h-6 w-6 rounded-full",
                       isActive
-                        ? isSAR ? "bg-orange-500/30" : "bg-primary/30"
+                        ? isIndustrial ? "bg-emerald-500/30" : isSAR ? "bg-orange-500/30" : "bg-primary/30"
                         : "bg-muted-foreground/20"
                     )} />
                   </div>
@@ -1016,13 +1047,13 @@ export function VideoPlayer() {
                 <div className={cn(
                   "px-1.5 py-1 text-center",
                   isActive
-                    ? isSAR ? "bg-orange-500/10" : "bg-primary/10"
+                    ? isIndustrial ? "bg-emerald-500/10" : isSAR ? "bg-orange-500/10" : "bg-primary/10"
                     : "bg-background"
                 )}>
                   <p className={cn(
                     "font-mono text-[9px] font-semibold uppercase tracking-wide truncate",
                     isActive
-                      ? isSAR ? "text-orange-400" : "text-primary"
+                      ? isIndustrial ? "text-emerald-400" : isSAR ? "text-orange-400" : "text-primary"
                       : "text-muted-foreground"
                   )}>
                     {asset.name}
@@ -1035,7 +1066,7 @@ export function VideoPlayer() {
                 {isActive && (
                   <div className={cn(
                     "absolute top-1 right-1 h-2 w-2 rounded-full",
-                    isSAR ? "bg-orange-500" : "bg-primary"
+                    isIndustrial ? "bg-emerald-500" : isSAR ? "bg-orange-500" : "bg-primary"
                   )} />
                 )}
               </button>

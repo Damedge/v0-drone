@@ -1,0 +1,40 @@
+[
+  {
+    "timestamp_ms": 9000,
+    "latitude": -17.8126,
+    "longitude": 74.9646,
+    "threat_level": "medium",
+    "description": "A large group of troops is advancing in a line from left to right, moving along the berm and towards the cluster of ruined buildings near the right edge of the frame. This is a clear coordinated movement, with additional troops gathering near the building entrance at the far right.",
+    "title": "Troop Advance",
+    "category": "MOVEMENT",
+    "frame_index": 3,
+    "target_box": {
+      "x_pct": 0.6,
+      "y_pct": 0.55,
+      "width_pct": 0.35,
+      "height_pct": 0.25
+    },
+    "altitude_m": 52.0,
+    "heading_deg": 45,
+    "speed_m_s": 5.2
+  },
+  {
+    "timestamp_ms": 18000,
+    "latitude": -17.8117,
+    "longitude": 74.96595,
+    "threat_level": "medium",
+    "description": "A military vehicle is positioned on the right side of the main dirt road in the foreground, partially concealed by terrain. Multiple troops are visible near and on top of the roof of a partially constructed building at the center-right, with additional troops spread along the berm left of the road. Smoke is rising from several locations in the background, indicating recent or ongoing combat activity.",
+    "title": "Troops & Vehicle Spotted",
+    "category": "ASSET",
+    "frame_index": 6,
+    "target_box": {
+      "x_pct": 0.8,
+      "y_pct": 0.85,
+      "width_pct": 0.13,
+      "height_pct": 0.18
+    },
+    "altitude_m": 53.8,
+    "heading_deg": 45,
+    "speed_m_s": 5.2
+  }
+]

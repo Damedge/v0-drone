@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 const missions = [
   { id: "tactical", label: "Op: Silent Guardian", mode: "tactical" as MissionMode, subtitle: "Tactical" },
   { id: "sar", label: "Op: Alpine Rescue", mode: "sar" as MissionMode, subtitle: "Search & Rescue" },
+  { id: "industrial", label: "Op: Wind Farm Inspection", mode: "industrial" as MissionMode, subtitle: "Industrial" },
 ]
 
 interface TopNavProps {
@@ -31,6 +32,8 @@ export function TopNav({ onUploadClick }: TopNavProps) {
 
   const currentMission = missions.find((m) => m.mode === missionMode) || missions[0]
   const isSAR = missionMode === "sar"
+  const isIndustrial = missionMode === "industrial"
+  const accentColor = isIndustrial ? "text-emerald-400" : isSAR ? "text-orange-400" : "text-foreground"
 
   return (
     <header className="flex h-14 items-center justify-between border-b border-border bg-card px-4">
@@ -46,7 +49,7 @@ export function TopNav({ onUploadClick }: TopNavProps) {
               onClick={() => setDropdownOpen(!dropdownOpen)}
               className={cn(
                 "flex items-center gap-2 font-mono text-sm font-semibold tracking-tight transition-colors",
-                isSAR ? "text-orange-400" : "text-foreground"
+                accentColor
               )}
             >
               {currentMission.label}
@@ -68,15 +71,18 @@ export function TopNav({ onUploadClick }: TopNavProps) {
                   >
                     <span className={cn(
                       "font-medium",
+                      mission.mode === "industrial" ? "text-emerald-400" :
                       mission.mode === "sar" ? "text-orange-400" : "text-foreground"
                     )}>
                       {mission.label}
                     </span>
                     <span className={cn(
                       "rounded px-1.5 py-0.5 text-[10px] uppercase",
-                      mission.mode === "sar" 
-                        ? "bg-orange-500/20 text-orange-400" 
-                        : "bg-primary/20 text-primary"
+                      mission.mode === "industrial" 
+                        ? "bg-emerald-500/20 text-emerald-400" 
+                        : mission.mode === "sar" 
+                          ? "bg-orange-500/20 text-orange-400" 
+                          : "bg-primary/20 text-primary"
                     )}>
                       {mission.subtitle}
                     </span>
@@ -92,15 +98,15 @@ export function TopNav({ onUploadClick }: TopNavProps) {
             <span className="font-mono uppercase text-muted-foreground">Asset:</span>
             <span className={cn(
               "font-mono font-medium",
-              isSAR ? "text-orange-400" : "text-foreground"
+              accentColor
             )}>
-              {isSAR ? "SAR-HELO RESCUE-1" : "RQ-180 DELTA-7"}
+              {isIndustrial ? "INDUSTRIAL-UAV INS-1" : isSAR ? "SAR-HELO RESCUE-1" : "RQ-180 DELTA-7"}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="font-mono uppercase text-muted-foreground">Alt:</span>
             <span className="font-mono font-medium text-foreground">
-              {isSAR ? "8,500 ft" : "45,000 ft"}
+              {isIndustrial ? "450 ft" : isSAR ? "8,500 ft" : "45,000 ft"}
             </span>
           </div>
         </div>
@@ -112,15 +118,19 @@ export function TopNav({ onUploadClick }: TopNavProps) {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder={isSAR 
-              ? "Semantic Search — e.g., 'thermal signature near ravine'" 
-              : "Semantic Search — e.g., 'vehicle convoy near checkpoint'"
+            placeholder={isIndustrial
+              ? "Semantic Search — e.g., 'blade damage on turbine 7'" 
+              : isSAR 
+                ? "Semantic Search — e.g., 'thermal signature near ravine'" 
+                : "Semantic Search — e.g., 'vehicle convoy near checkpoint'"
             }
             className={cn(
               "h-9 w-full rounded-md border bg-input pl-9 pr-4 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1",
-              isSAR 
-                ? "border-orange-500/30 focus:border-orange-500 focus:ring-orange-500" 
-                : "border-border focus:border-primary focus:ring-primary"
+              isIndustrial
+                ? "border-emerald-500/30 focus:border-emerald-500 focus:ring-emerald-500"
+                : isSAR 
+                  ? "border-orange-500/30 focus:border-orange-500 focus:ring-orange-500" 
+                  : "border-border focus:border-primary focus:ring-primary"
             )}
           />
         </div>
@@ -151,7 +161,7 @@ export function TopNav({ onUploadClick }: TopNavProps) {
           <Bell className="h-4 w-4" />
           <span className={cn(
             "absolute right-1 top-1 h-2 w-2 rounded-full",
-            isSAR ? "bg-orange-500" : "bg-neon-red"
+            isIndustrial ? "bg-emerald-500" : isSAR ? "bg-orange-500" : "bg-neon-red"
           )} />
         </button>
 
@@ -171,9 +181,11 @@ export function TopNav({ onUploadClick }: TopNavProps) {
           size="sm"
           className={cn(
             "h-8 gap-2 font-mono text-xs uppercase tracking-wide",
-            isSAR 
-              ? "bg-orange-500 text-white hover:bg-orange-600" 
-              : "bg-primary text-primary-foreground hover:bg-primary/90"
+            isIndustrial 
+              ? "bg-emerald-500 text-white hover:bg-emerald-600" 
+              : isSAR 
+                ? "bg-orange-500 text-white hover:bg-orange-600" 
+                : "bg-primary text-primary-foreground hover:bg-primary/90"
           )}
         >
           <FileDown className="h-3.5 w-3.5" />

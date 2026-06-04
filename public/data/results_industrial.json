@@ -1,0 +1,162 @@
+[
+  {
+    "id": "1",
+    "timestamp_ms": 3200,
+    "title": "Blade Surface Erosion",
+    "category": "BLADE",
+    "description": "Leading edge erosion detected on Blade A. Surface degradation consistent with particle impact damage. Recommend protective coating inspection.",
+    "confidence": 0.94,
+    "latitude": -37.8105,
+    "longitude": 144.9675,
+    "target_box": {
+      "x_pct": 0.45,
+      "y_pct": 0.30,
+      "width_pct": 0.12,
+      "height_pct": 0.18
+    }
+  },
+  {
+    "id": "2",
+    "timestamp_ms": 8500,
+    "title": "Lightning Strike Damage",
+    "category": "LIGHTNING",
+    "description": "Possible lightning strike damage identified near blade tip. Visible discoloration and surface scarring. Structural integrity assessment recommended.",
+    "confidence": 0.88,
+    "latitude": -37.8107,
+    "longitude": 144.9678,
+    "target_box": {
+      "x_pct": 0.58,
+      "y_pct": 0.22,
+      "width_pct": 0.08,
+      "height_pct": 0.10
+    }
+  },
+  {
+    "id": "3",
+    "timestamp_ms": 15000,
+    "title": "Coating Delamination",
+    "category": "COATING",
+    "description": "Gelcoat delamination observed on Blade B trailing edge. Area approximately 0.5m². Monitor for expansion in subsequent inspections.",
+    "confidence": 0.91,
+    "latitude": -37.8103,
+    "longitude": 144.9680,
+    "target_box": {
+      "x_pct": 0.35,
+      "y_pct": 0.45,
+      "width_pct": 0.15,
+      "height_pct": 0.12
+    }
+  },
+  {
+    "id": "4",
+    "timestamp_ms": 22800,
+    "title": "Nacelle Oil Leak",
+    "category": "NACELLE",
+    "description": "Minor oil residue detected on nacelle exterior near gearbox housing. Pattern suggests slow seepage from gearbox seal. Schedule maintenance inspection.",
+    "confidence": 0.86,
+    "latitude": -37.8110,
+    "longitude": 144.9672,
+    "target_box": {
+      "x_pct": 0.50,
+      "y_pct": 0.55,
+      "width_pct": 0.10,
+      "height_pct": 0.08
+    }
+  },
+  {
+    "id": "5",
+    "timestamp_ms": 31500,
+    "title": "Tower Corrosion",
+    "category": "TOWER",
+    "description": "Surface corrosion identified on tower flange joint at 40m elevation. Rust spots visible around bolt heads. Protective coating touch-up required.",
+    "confidence": 0.79,
+    "latitude": -37.8108,
+    "longitude": 144.9676,
+    "target_box": {
+      "x_pct": 0.42,
+      "y_pct": 0.65,
+      "width_pct": 0.08,
+      "height_pct": 0.10
+    }
+  },
+  {
+    "id": "6",
+    "timestamp_ms": 38200,
+    "title": "Blade Crack Detection",
+    "category": "STRUCTURAL",
+    "description": "Potential hairline crack identified on Blade C root section. High priority for ultrasonic testing verification. Mark for immediate follow-up.",
+    "confidence": 0.72,
+    "latitude": -37.8106,
+    "longitude": 144.9679,
+    "target_box": {
+      "x_pct": 0.28,
+      "y_pct": 0.38,
+      "width_pct": 0.06,
+      "height_pct": 0.20
+    }
+  },
+  {
+    "id": "7",
+    "timestamp_ms": 45000,
+    "title": "Bird Debris Accumulation",
+    "category": "BLADE",
+    "description": "Organic debris buildup on blade surfaces reducing aerodynamic efficiency. Bird strike residue and nesting material detected. Cleaning scheduled.",
+    "confidence": 0.95,
+    "latitude": -37.8104,
+    "longitude": 144.9674,
+    "target_box": {
+      "x_pct": 0.55,
+      "y_pct": 0.35,
+      "width_pct": 0.12,
+      "height_pct": 0.14
+    }
+  },
+  {
+    "id": "8",
+    "timestamp_ms": 52800,
+    "title": "Electrical Cable Wear",
+    "category": "ELECTRICAL",
+    "description": "Cable insulation wear detected on external routing along tower. UV degradation visible on protective sheathing. Replacement recommended within 6 months.",
+    "confidence": 0.83,
+    "latitude": -37.8109,
+    "longitude": 144.9677,
+    "target_box": {
+      "x_pct": 0.38,
+      "y_pct": 0.70,
+      "width_pct": 0.05,
+      "height_pct": 0.15
+    }
+  },
+  {
+    "id": "9",
+    "timestamp_ms": 61000,
+    "title": "Foundation Settlement",
+    "category": "FOUNDATION",
+    "description": "Minor ground settlement indicators around turbine foundation. No immediate structural concern but recommend monitoring during next quarterly inspection.",
+    "confidence": 0.68,
+    "latitude": -37.8111,
+    "longitude": 144.9673,
+    "target_box": {
+      "x_pct": 0.48,
+      "y_pct": 0.85,
+      "width_pct": 0.20,
+      "height_pct": 0.10
+    }
+  },
+  {
+    "id": "10",
+    "timestamp_ms": 68500,
+    "title": "Pitch System Anomaly",
+    "category": "STRUCTURAL",
+    "description": "Blade pitch alignment deviation detected on Blade A. 2.3° variance from nominal. Pitch bearing inspection and calibration may be required.",
+    "confidence": 0.76,
+    "latitude": -37.8105,
+    "longitude": 144.9681,
+    "target_box": {
+      "x_pct": 0.32,
+      "y_pct": 0.42,
+      "width_pct": 0.10,
+      "height_pct": 0.16
+    }
+  }
+]

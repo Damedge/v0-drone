@@ -15,6 +15,9 @@ import {
   Heart,
   Navigation,
   Circle,
+  Wrench,
+  Zap,
+  Wind,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useMission } from "@/contexts/mission-context"
@@ -55,6 +58,15 @@ const categoryColors: Record<string, { bg: string; text: string }> = {
   SIGNAL: { bg: "bg-green-500/20", text: "text-green-400" },
   DEBRIS: { bg: "bg-gray-500/20", text: "text-gray-400" },
   SUBJECT: { bg: "bg-yellow-500/20", text: "text-yellow-400" },
+  // Industrial categories
+  BLADE: { bg: "bg-emerald-500/20", text: "text-emerald-400" },
+  ELECTRICAL: { bg: "bg-yellow-500/20", text: "text-yellow-400" },
+  STRUCTURAL: { bg: "bg-cyan-500/20", text: "text-cyan-400" },
+  NACELLE: { bg: "bg-purple-500/20", text: "text-purple-400" },
+  COATING: { bg: "bg-amber-500/20", text: "text-amber-400" },
+  TOWER: { bg: "bg-blue-500/20", text: "text-blue-400" },
+  FOUNDATION: { bg: "bg-gray-500/20", text: "text-gray-400" },
+  LIGHTNING: { bg: "bg-indigo-500/20", text: "text-indigo-400" },
 }
 
 // Tactical event config
@@ -118,6 +130,38 @@ const sarEventConfig: Record<
     icon: Radio,
     color: "text-orange-300",
     bgColor: "bg-orange-300/10",
+  },
+}
+
+// Industrial event config
+const industrialEventConfig: Record<
+  EventType,
+  { icon: typeof AlertTriangle; color: string; bgColor: string }
+> = {
+  anomaly: {
+    icon: Wrench,
+    color: "text-emerald-400",
+    bgColor: "bg-emerald-400/10",
+  },
+  detection: {
+    icon: Eye,
+    color: "text-teal-400",
+    bgColor: "bg-teal-400/10",
+  },
+  priority: {
+    icon: AlertTriangle,
+    color: "text-red-400",
+    bgColor: "bg-red-400/10",
+  },
+  movement: {
+    icon: Wind,
+    color: "text-emerald-500",
+    bgColor: "bg-emerald-500/10",
+  },
+  comms: {
+    icon: Zap,
+    color: "text-yellow-400",
+    bgColor: "bg-yellow-400/10",
   },
 }
 
@@ -186,7 +230,8 @@ export function EventTimeline() {
   const [feedback, setFeedback] = useState<Record<number, "tp" | "fp" | null>>({})
 
   const isSAR = missionMode === "sar"
-  const eventConfig = isSAR ? sarEventConfig : tacticalEventConfig
+  const isIndustrial = missionMode === "industrial"
+  const eventConfig = isIndustrial ? industrialEventConfig : isSAR ? sarEventConfig : tacticalEventConfig
 
   // Reset state when mission mode changes
   useEffect(() => {
@@ -221,8 +266,8 @@ export function EventTimeline() {
     type: e.threat_level 
       ? getThreatEventType(e.threat_level) 
       : getConfidenceEventType(e.confidence || 0),
-    title: e.title || (isSAR ? "Detection Event" : "Tactical Event"),
-    category: e.category || (isSAR ? "THERMAL" : "MOVEMENT"),
+    title: e.title || (isIndustrial ? "Inspection Event" : isSAR ? "Detection Event" : "Tactical Event"),
+    category: e.category || (isIndustrial ? "BLADE" : isSAR ? "THERMAL" : "MOVEMENT"),
     description: e.description,
     coordinates: `${e.coordinates.lat.toFixed(4)}°, ${e.coordinates.lon.toFixed(4)}°`,
     confidence: e.confidence,
@@ -245,16 +290,18 @@ export function EventTimeline() {
           </span>
           <span className={cn(
             "rounded px-1.5 py-0.5 font-mono text-[10px]",
-            isSAR ? "bg-orange-500/20 text-orange-400" : "bg-secondary text-muted-foreground"
+            isIndustrial ? "bg-emerald-500/20 text-emerald-400" : isSAR ? "bg-orange-500/20 text-orange-400" : "bg-secondary text-muted-foreground"
           )}>
             {filteredEvents.length}
           </span>
         </div>
         <button className={cn(
           "flex items-center gap-1 rounded border px-2 py-1 text-xs transition-colors hover:text-foreground",
-          isSAR 
-            ? "border-orange-500/30 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20" 
-            : "border-border bg-secondary text-muted-foreground hover:bg-accent"
+          isIndustrial
+            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+            : isSAR 
+              ? "border-orange-500/30 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20" 
+              : "border-border bg-secondary text-muted-foreground hover:bg-accent"
         )}>
           <Filter className="h-3 w-3" />
           <span className="font-mono uppercase">Filter</span>
@@ -272,12 +319,16 @@ export function EventTimeline() {
               className={cn(
                 "rounded px-2 py-1 font-mono text-[10px] uppercase tracking-wide transition-colors",
                 filter === type
-                  ? isSAR 
-                    ? "bg-orange-500 text-white" 
-                    : "bg-primary text-primary-foreground"
-                  : isSAR
-                    ? "bg-orange-500/10 text-orange-400 hover:bg-orange-500/20"
-                    : "bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground"
+                  ? isIndustrial
+                    ? "bg-emerald-500 text-white"
+                    : isSAR 
+                      ? "bg-orange-500 text-white" 
+                      : "bg-primary text-primary-foreground"
+                  : isIndustrial
+                    ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                    : isSAR
+                      ? "bg-orange-500/10 text-orange-400 hover:bg-orange-500/20"
+                      : "bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground"
               )}
             >
               {type}
@@ -317,9 +368,11 @@ export function EventTimeline() {
                   className={cn(
                     "w-full rounded-md border p-3 text-left transition-all cursor-pointer",
                     isSelected
-                      ? isSAR 
-                        ? "border-orange-500 bg-orange-500/5" 
-                        : "border-primary bg-primary/5"
+                      ? isIndustrial
+                        ? "border-emerald-500 bg-emerald-500/5"
+                        : isSAR 
+                          ? "border-orange-500 bg-orange-500/5" 
+                          : "border-primary bg-primary/5"
                       : "border-transparent bg-secondary/50 hover:border-border hover:bg-secondary"
                   )}
                 >
@@ -355,7 +408,7 @@ export function EventTimeline() {
 
                       {/* Threat/Confidence Indicator */}
                       <div className="mt-1.5 flex items-center gap-2">
-                        {!isSAR && event.threatLevel && (
+                        {!isSAR && !isIndustrial && event.threatLevel && (
                           <div className="flex items-center gap-1.5">
                             <Circle className={cn("h-2 w-2 fill-current", getThreatDotColor(event.threatLevel), getThreatColor(event.threatLevel))} />
                             <span className={cn("font-mono text-[10px] uppercase font-medium", getThreatColor(event.threatLevel))}>
@@ -364,6 +417,11 @@ export function EventTimeline() {
                           </div>
                         )}
                         {isSAR && event.confidence !== undefined && (
+                          <span className={cn("font-mono text-[10px] font-medium", getConfidenceColor(event.confidence))}>
+                            {Math.round(event.confidence * 100)}% Confidence
+                          </span>
+                        )}
+                        {isIndustrial && event.confidence !== undefined && (
                           <span className={cn("font-mono text-[10px] font-medium", getConfidenceColor(event.confidence))}>
                             {Math.round(event.confidence * 100)}% Confidence
                           </span>
@@ -382,9 +440,11 @@ export function EventTimeline() {
                           onClick={(e) => handleExpandToggle(e, event.index)}
                           className={cn(
                             "mt-1 flex items-center gap-0.5 font-mono text-[10px] transition-colors",
-                            isSAR 
-                              ? "text-orange-400 hover:text-orange-300" 
-                              : "text-primary hover:text-primary/80"
+                            isIndustrial
+                              ? "text-emerald-400 hover:text-emerald-300"
+                              : isSAR 
+                                ? "text-orange-400 hover:text-orange-300" 
+                                : "text-primary hover:text-primary/80"
                           )}
                         >
                           {isExpanded ? (
@@ -453,19 +513,19 @@ export function EventTimeline() {
           <div className="flex items-center gap-1">
             <span className={cn(
               "h-2 w-2 rounded-full",
-              isSAR ? "bg-orange-500" : "bg-neon-red"
+              isIndustrial ? "bg-emerald-500" : isSAR ? "bg-orange-500" : "bg-neon-red"
             )} />
             <span className="font-mono text-[10px] text-muted-foreground">
-              {priorityCount} {isSAR ? "Critical" : "Priority"}
+              {priorityCount} {isIndustrial ? "Critical" : isSAR ? "Critical" : "Priority"}
             </span>
           </div>
           <div className="flex items-center gap-1">
             <span className={cn(
               "h-2 w-2 rounded-full",
-              isSAR ? "bg-yellow-400" : "bg-neon-amber"
+              isIndustrial ? "bg-teal-400" : isSAR ? "bg-yellow-400" : "bg-neon-amber"
             )} />
             <span className="font-mono text-[10px] text-muted-foreground">
-              {anomalyCount} {isSAR ? "Thermals" : "Anomalies"}
+              {anomalyCount} {isIndustrial ? "Defects" : isSAR ? "Thermals" : "Anomalies"}
             </span>
           </div>
         </div>

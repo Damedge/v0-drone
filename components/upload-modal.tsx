@@ -77,8 +77,15 @@ export function UploadModal({ onClose }: UploadModalProps) {
     const isSAR = telemetryFile?.name.toLowerCase().includes("sar") || 
                   telemetryFile?.name.toLowerCase().includes("rescue") ||
                   telemetryFile?.name.toLowerCase().includes("search")
+    const isIndustrial = telemetryFile?.name.toLowerCase().includes("industrial") ||
+                         telemetryFile?.name.toLowerCase().includes("turbine") ||
+                         telemetryFile?.name.toLowerCase().includes("wind")
     
-    const dataUrl = isSAR ? "/data/results_sar.json" : "/data/results_tactical.json"
+    const dataUrl = isIndustrial 
+      ? "/data/results_industrial.json" 
+      : isSAR 
+        ? "/data/results_sar.json" 
+        : "/data/results_tactical.json"
     
     try {
       const response = await fetch(dataUrl)
@@ -89,15 +96,16 @@ export function UploadModal({ onClose }: UploadModalProps) {
         const mappedData: MissionEvent[] = rawData.map((item: Record<string, unknown>, index: number) => ({
           id: String(item.id || index),
           timestamp_ms: item.timestamp_ms as number,
-          title: (item.title as string) || (isSAR ? "Thermal Detection" : "Contact Detected"),
-          category: (item.category as string) || (isSAR ? "THERMAL" : "MOVEMENT"),
+          title: (item.title as string) || (isIndustrial ? "Anomaly Detected" : isSAR ? "Thermal Detection" : "Contact Detected"),
+          category: (item.category as string) || (isIndustrial ? "INSPECTION" : isSAR ? "THERMAL" : "MOVEMENT"),
           description: item.description as string,
           threat_level: item.threat_level as string | undefined,
           confidence: item.confidence as number | undefined,
           coordinates: {
             lat: (item.latitude as number) ?? (item.coordinates as { lat: number })?.lat ?? 0,
             lon: (item.longitude as number) ?? (item.coordinates as { lon: number })?.lon ?? 0,
-          }
+          },
+          target_box: item.target_box as MissionEvent["target_box"] | undefined,
         }))
         setMissionData(mappedData)
       } else {
@@ -138,7 +146,7 @@ export function UploadModal({ onClose }: UploadModalProps) {
       ])
     }
 
-    setMissionMode(isSAR ? "sar" : "tactical")
+    setMissionMode(isIndustrial ? "industrial" : isSAR ? "sar" : "tactical")
     setVideoFileName(videoFile?.name || "")
     setTelemetryFileName(telemetryFile?.name || "")
     setIsDataLoaded(true)
