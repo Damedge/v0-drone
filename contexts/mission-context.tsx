@@ -94,10 +94,51 @@ export function MissionProvider({ children }: { children: ReactNode }) {
     setTrainedAnnotations((prev) => [...prev, annotation])
   }
 
-  // Reset snapshots and trained annotations when mission mode changes
+  // When missionMode changes, reset per-mission state and auto-load the
+  // appropriate events. Industrial starts empty — its timeline is populated
+  // only after the annotate+train flow completes.
   useEffect(() => {
     setSnapshots([])
     setTrainedAnnotations([])
+    setMissionData([])
+    setIsDataLoaded(false)
+
+    if (missionMode === "industrial") {
+      // Industrial timeline is intentionally empty on load.
+      // Events are injected by the annotate+train flow in video-player.tsx.
+      setIsDataLoaded(true)
+      return
+    }
+
+    const dataUrl =
+      missionMode === "sar"
+        ? "/data/results_sar.json"
+        : "/data/results_tactical.json"
+
+    fetch(dataUrl)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((rawData: Record<string, unknown>[]) => {
+        const mapped: MissionEvent[] = rawData.map((item, index) => ({
+          id: String(item.id ?? index),
+          timestamp_ms: item.timestamp_ms as number,
+          title: (item.title as string) || (missionMode === "sar" ? "Thermal Detection" : "Contact Detected"),
+          category: (item.category as string) || (missionMode === "sar" ? "THERMAL" : "MOVEMENT"),
+          description: item.description as string,
+          threat_level: item.threat_level as string | undefined,
+          confidence: item.confidence as number | undefined,
+          coordinates: {
+            lat: (item.latitude as number) ?? (item.coordinates as { lat: number })?.lat ?? 0,
+            lon: (item.longitude as number) ?? (item.coordinates as { lon: number })?.lon ?? 0,
+          },
+          target_box: item.target_box as MissionEvent["target_box"] | undefined,
+        }))
+        setMissionData(mapped)
+        setIsDataLoaded(true)
+      })
+      .catch(() => {
+        setMissionData([])
+        setIsDataLoaded(true)
+      })
   }, [missionMode])
 
   return (

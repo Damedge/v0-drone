@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react"
 import { Upload, FileVideo, FileJson, Play, AlertTriangle, Eye, Plane, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useMission, MissionEvent } from "@/contexts/mission-context"
+import { useMission } from "@/contexts/mission-context"
 import { cn } from "@/lib/utils"
 
 type HubState = "entry" | "processing" | "triage"
@@ -32,7 +32,7 @@ const processingSteps = [
 ]
 
 export function MissionHub() {
-  const { missionMode, setActiveView, setMissionData, setIsDataLoaded, setVideoFileName, setTelemetryFileName } = useMission()
+  const { missionMode, setActiveView, setIsDataLoaded, setVideoFileName, setTelemetryFileName } = useMission()
   const [hubState, setHubState] = useState<HubState>("entry")
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [telemetryFile, setTelemetryFile] = useState<File | null>(null)
@@ -88,36 +88,9 @@ export function MissionHub() {
     if (videoFile) setVideoFileName(videoFile.name)
     if (telemetryFile) setTelemetryFileName(telemetryFile.name)
 
-    // Load mock mission data for the selected drone - respects current mission mode
-    try {
-      const dataUrl = missionMode === "industrial" 
-        ? "/data/results_industrial.json"
-        : missionMode === "sar"
-          ? "/data/results_sar.json"
-          : "/data/results_tactical.json"
-      const response = await fetch(dataUrl)
-      if (response.ok) {
-        const rawData = await response.json()
-        const mappedData: MissionEvent[] = rawData.map((item: Record<string, unknown>, index: number) => ({
-          id: String(item.id || index),
-          timestamp_ms: item.timestamp_ms as number,
-          title: (item.title as string) || "Contact Detected",
-          category: (item.category as string) || "MOVEMENT",
-          description: item.description as string,
-          threat_level: item.threat_level as string | undefined,
-          confidence: item.confidence as number | undefined,
-          coordinates: {
-            lat: (item.latitude as number) ?? (item.coordinates as { lat: number })?.lat ?? 0,
-            lon: (item.longitude as number) ?? (item.coordinates as { lon: number })?.lon ?? 0,
-          },
-          target_box: item.target_box as MissionEvent["target_box"] | undefined,
-        }))
-        setMissionData(mappedData)
-      }
-    } catch {
-      setMissionData([])
-    }
-
+    // Mission data is already loaded by the context's missionMode effect.
+    // For industrial, the timeline stays empty until annotate+train completes.
+    // Just mark as loaded and open the analysis desk.
     setIsDataLoaded(true)
     setActiveView("analysis")
   }
