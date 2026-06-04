@@ -431,7 +431,7 @@ export function VideoPlayer() {
         category: "USER-TRAINED",
         description: `Operator-annotated anomaly: ${annotationLabel.trim()}. Trained at ${new Date().toLocaleTimeString()}.`,
         threat_level: isSAR ? undefined : isIndustrialMode ? undefined : "high",
-        confidence: isIndustrialMode ? 0.91 : isSAR ? 0.99 : undefined,
+        confidence: isIndustrialMode ? 0.99 : isSAR ? 0.99 : undefined,
         coordinates: isIndustrialMode 
           ? { lat: -37.8105, lon: 144.9675 }
           : { lat: telemetry.lat, lon: telemetry.lon },
