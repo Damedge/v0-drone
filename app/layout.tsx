@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'OVERWATCH | ISR Analysis Platform',
+  title: 'OVERWATCH | AEROSPACE',
   description: 'Tactical ISR Drone Analysis Dashboard',
   generator: 'v0.app',
   icons: {
