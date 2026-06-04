@@ -1,18 +1,37 @@
 [
   {
+    "timestamp_ms": 3000,
+    "latitude": -37.8132,
+    "longitude": 144.9637,
+    "confidence": 0.35,
+    "description": "Possible human figure detected near the building entrance at the lower center of the frame, adjacent to the red-roofed structure. The object is small relative to altitude and partially occluded by shadow, but the upright posture and proximity to the entrance suggest a person. No corroboration in adjacent frames yet.",
+    "title": "Possible Person",
+    "category": "PERSONNEL",
+    "frame_index": 1,
+    "target_box": {
+      "x_pct": 0.47,
+      "y_pct": 0.87,
+      "width_pct": 0.03,
+      "height_pct": 0.07
+    },
+    "altitude_m": 50.8,
+    "heading_deg": 45,
+    "speed_m_s": 5.2
+  },
+  {
     "timestamp_ms": 27000,
     "latitude": -37.8109,
     "longitude": 144.96715,
-    "confidence": 0.85,
-    "description": "A human figure is visible near the parking lot, walking along the sidewalk adjacent to the building with solar panels. This may indicate personnel or a subject of interest for SAR operations.",
-    "title": "Human Detected",
+    "confidence": 0.65,
+    "description": "Possible human figure detected near the entrance ramp to the parking lot, adjacent to the building with solar panels. The subject is small due to altitude but appears upright and distinct from vehicles. No corroboration in previous frames, so confidence is moderate.",
+    "title": "Possible Person",
     "category": "PERSONNEL",
     "frame_index": 9,
     "target_box": {
-      "x_pct": 0.52,
+      "x_pct": 0.57,
       "y_pct": 0.18,
-      "width_pct": 0.03,
-      "height_pct": 0.07
+      "width_pct": 0.02,
+      "height_pct": 0.05
     },
     "altitude_m": 54.0,
     "heading_deg": 45,

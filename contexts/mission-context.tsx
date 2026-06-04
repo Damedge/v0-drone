@@ -55,7 +55,7 @@ export function MissionProvider({ children }: { children: ReactNode }) {
   const seekToTime = (timestampMs: number) => {
     if (videoRef.current) {
       videoRef.current.currentTime = timestampMs / 1000
-      videoRef.current.play().catch(() => {})
+      videoRef.current.pause()
     }
   }
 

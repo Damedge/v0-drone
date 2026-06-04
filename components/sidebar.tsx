@@ -37,10 +37,10 @@ export function Sidebar() {
         {!collapsed && (
           <div className="flex flex-col">
             <span className="font-mono text-sm font-semibold tracking-tight text-foreground">
-              OVERWATCH
+              KESTREL
             </span>
             <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              Aerospace
+              Recon
             </span>
           </div>
         )}

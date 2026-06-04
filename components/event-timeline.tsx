@@ -183,6 +183,7 @@ export function EventTimeline() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
   const [filter, setFilter] = useState<EventType | "all">("all")
+  const [feedback, setFeedback] = useState<Record<number, "tp" | "fp" | null>>({})
 
   const isSAR = missionMode === "sar"
   const eventConfig = isSAR ? sarEventConfig : tacticalEventConfig
@@ -191,6 +192,7 @@ export function EventTimeline() {
   useEffect(() => {
     setSelectedIndex(null)
     setExpandedIndex(null)
+    setFeedback({})
   }, [missionMode])
 
   const handleEventClick = (timestampMs: number, index: number) => {
@@ -201,6 +203,14 @@ export function EventTimeline() {
   const handleExpandToggle = (e: React.MouseEvent, index: number) => {
     e.stopPropagation()
     setExpandedIndex(expandedIndex === index ? null : index)
+  }
+
+  const handleFeedback = (e: React.MouseEvent, index: number, type: "tp" | "fp") => {
+    e.stopPropagation()
+    setFeedback(prev => ({
+      ...prev,
+      [index]: prev[index] === type ? null : type
+    }))
   }
 
   // Build unified event list from context missionData
@@ -298,6 +308,7 @@ export function EventTimeline() {
               const isSelected = selectedIndex === event.index
               const isExpanded = expandedIndex === event.index
               const catColors = categoryColors[event.category] || { bg: "bg-gray-500/20", text: "text-gray-400" }
+              const eventFeedback = feedback[event.index]
 
               return (
                 <div
@@ -399,6 +410,34 @@ export function EventTimeline() {
                           </span>
                         </div>
                       )}
+
+                      {/* HITL Feedback Buttons */}
+                      <div className="mt-3 flex items-center gap-2">
+                        <button
+                          onClick={(e) => handleFeedback(e, event.index, "tp")}
+                          className={cn(
+                            "flex items-center gap-1 rounded border px-2 py-1 font-mono text-[10px] transition-all",
+                            eventFeedback === "tp"
+                              ? "border-green-500/50 bg-green-500/20 text-green-400"
+                              : "border-border bg-transparent text-muted-foreground hover:border-green-500/30 hover:text-green-400",
+                            eventFeedback === "fp" && "opacity-40"
+                          )}
+                        >
+                          <span>True Positive</span>
+                        </button>
+                        <button
+                          onClick={(e) => handleFeedback(e, event.index, "fp")}
+                          className={cn(
+                            "flex items-center gap-1 rounded border px-2 py-1 font-mono text-[10px] transition-all",
+                            eventFeedback === "fp"
+                              ? "border-red-500/50 bg-red-500/20 text-red-400"
+                              : "border-border bg-transparent text-muted-foreground hover:border-red-500/30 hover:text-red-400",
+                            eventFeedback === "tp" && "opacity-40"
+                          )}
+                        >
+                          <span>False Positive</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
