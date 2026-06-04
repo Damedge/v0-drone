@@ -103,7 +103,7 @@ function UserMarker({ marker, isSAR }: { marker: Marker; isSAR: boolean }) {
 }
 
 export function VideoPlayer() {
-  const { missionMode, videoRef, missionData, addSnapshot, addMissionEvent, addTrainedAnnotation, telemetry: contextTelemetry } = useMission()
+  const { missionMode, videoRef, missionData, addSnapshot, addMissionEvent, addTrainedAnnotation, activeView } = useMission()
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -187,7 +187,18 @@ export function VideoPlayer() {
     updateTelemetry(time)
   }
 
-  // Reset video when mode or asset changes
+  // Auto-play when the analysis desk is opened
+  useEffect(() => {
+    if (activeView === "analysis") {
+      // Small delay to allow the video element to mount and the src to load
+      const timer = setTimeout(() => {
+        safePlay()
+      }, 300)
+      return () => clearTimeout(timer)
+    }
+  }, [activeView])
+
+  // Reset video when mode or asset changes, then auto-play if already on analysis view
   useEffect(() => {
     const video = videoRef.current
     if (video) {
@@ -200,6 +211,17 @@ export function VideoPlayer() {
       setMarkers([])
       setPanOffset({ x: 0, y: 0 })
       updateTelemetry(0)
+
+      // If we're already on the analysis desk (e.g. switching drones/missions mid-session),
+      // auto-play once the new source has loaded enough data to start
+      if (activeView === "analysis") {
+        const onCanPlay = () => {
+          safePlay()
+          video.removeEventListener("canplay", onCanPlay)
+        }
+        video.addEventListener("canplay", onCanPlay)
+        return () => video.removeEventListener("canplay", onCanPlay)
+      }
     }
   }, [missionMode, activeAssetId, videoRef])
 
