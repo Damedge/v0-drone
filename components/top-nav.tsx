@@ -1,9 +1,21 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Search, FileDown, Bell, Wifi, Battery, Signal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export function TopNav() {
+  const [currentTime, setCurrentTime] = useState<string | null>(null)
+
+  useEffect(() => {
+    const updateTime = () => {
+      setCurrentTime(new Date().toLocaleTimeString("en-US", { hour12: false }))
+    }
+    updateTime()
+    const interval = setInterval(updateTime, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <header className="flex h-14 items-center justify-between border-b border-border bg-card px-4">
       {/* Left Section - Mission Info */}
@@ -79,7 +91,7 @@ export function TopNav() {
         {/* Time */}
         <div className="flex flex-col items-end">
           <span className="font-mono text-xs font-medium text-foreground">
-            {new Date().toLocaleTimeString("en-US", { hour12: false })}
+            {currentTime ?? "--:--:--"}
           </span>
           <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
             ZULU
