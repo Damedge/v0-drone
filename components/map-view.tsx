@@ -1,99 +1,118 @@
 "use client"
 
-import {
-  Maximize2,
-  Layers,
-  Navigation,
-  Plus,
-  Minus,
-  Crosshair,
-  MapPin,
-} from "lucide-react"
+import { useMemo, useState, useEffect, useRef } from "react"
+import { Maximize2, Activity } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useMission } from "@/contexts/mission-context"
 
-interface MapMarker {
-  id: string
-  x: number
-  y: number
-  type: "vehicle" | "poi" | "waypoint" | "asset"
-  label: string
-}
-
-// Tactical markers
-const tacticalMarkers: MapMarker[] = [
-  { id: "1", x: 25, y: 35, type: "vehicle", label: "VEH-01" },
-  { id: "2", x: 45, y: 50, type: "poi", label: "POI-ALPHA" },
-  { id: "3", x: 65, y: 40, type: "vehicle", label: "VEH-02" },
-  { id: "4", x: 30, y: 65, type: "waypoint", label: "WP-BRAVO" },
-  { id: "5", x: 75, y: 60, type: "asset", label: "RQ-180" },
-]
-
-// SAR markers
-const sarMarkers: MapMarker[] = [
-  { id: "s1", x: 20, y: 30, type: "waypoint", label: "LAST SEEN" },
-  { id: "s2", x: 45, y: 45, type: "poi", label: "THERMAL HIT" },
-  { id: "s3", x: 55, y: 55, type: "poi", label: "SUBJECT" },
-  { id: "s4", x: 35, y: 70, type: "waypoint", label: "TRAIL HEAD" },
-  { id: "s5", x: 70, y: 50, type: "asset", label: "RESCUE-1" },
-  { id: "s6", x: 60, y: 65, type: "waypoint", label: "LZ-ALPHA" },
-]
-
-// Tactical marker styles
-const tacticalMarkerStyles: Record<
-  MapMarker["type"],
-  { color: string; bgColor: string }
-> = {
-  vehicle: { color: "text-neon-cyan", bgColor: "bg-neon-cyan" },
-  poi: { color: "text-neon-amber", bgColor: "bg-neon-amber" },
-  waypoint: { color: "text-primary", bgColor: "bg-primary" },
-  asset: { color: "text-success", bgColor: "bg-success" },
-}
-
-// SAR marker styles
-const sarMarkerStyles: Record<
-  MapMarker["type"],
-  { color: string; bgColor: string }
-> = {
-  vehicle: { color: "text-yellow-400", bgColor: "bg-yellow-400" },
-  poi: { color: "text-orange-500", bgColor: "bg-orange-500" },
-  waypoint: { color: "text-yellow-500", bgColor: "bg-yellow-500" },
-  asset: { color: "text-orange-400", bgColor: "bg-orange-400" },
-}
-
 export function MapView() {
-  const { missionMode } = useMission()
-  const isSAR = missionMode === "sar"
+  const { missionMode, missionData, videoRef, seekToTime } = useMission()
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [hoveredEvent, setHoveredEvent] = useState<string | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   
-  const markers = isSAR ? sarMarkers : tacticalMarkers
-  const markerStyles = isSAR ? sarMarkerStyles : tacticalMarkerStyles
+  const isSAR = missionMode === "sar"
+
+  // Sync with video currentTime
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+
+    const handleTimeUpdate = () => setCurrentTime(video.currentTime)
+    const handleDurationChange = () => setDuration(video.duration || 0)
+    const handleLoadedMetadata = () => setDuration(video.duration || 0)
+
+    video.addEventListener("timeupdate", handleTimeUpdate)
+    video.addEventListener("durationchange", handleDurationChange)
+    video.addEventListener("loadedmetadata", handleLoadedMetadata)
+
+    // Initialize with current values
+    setCurrentTime(video.currentTime)
+    setDuration(video.duration || 0)
+
+    return () => {
+      video.removeEventListener("timeupdate", handleTimeUpdate)
+      video.removeEventListener("durationchange", handleDurationChange)
+      video.removeEventListener("loadedmetadata", handleLoadedMetadata)
+    }
+  }, [videoRef])
+
+  // Calculate latitude bounds from mission data
+  const { minLat, maxLat, latRange } = useMemo(() => {
+    if (missionData.length === 0) {
+      return { minLat: 0, maxLat: 1, latRange: 1 }
+    }
+    
+    const lats = missionData.map(e => e.coordinates.lat)
+    const min = Math.min(...lats)
+    const max = Math.max(...lats)
+    const range = max - min || 1 // Prevent division by zero
+    
+    // Add 10% padding to range
+    const padding = range * 0.1
+    return { 
+      minLat: min - padding, 
+      maxLat: max + padding, 
+      latRange: range + padding * 2 
+    }
+  }, [missionData])
+
+  // Handle event dot click - jump video to timestamp
+  const handleEventClick = (timestampMs: number) => {
+    seekToTime(timestampMs)
+  }
+
+  // Format time for display
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${secs.toString().padStart(2, "0")}`
+  }
+
+  // Calculate playhead position
+  const playheadPosition = duration > 0 ? (currentTime / duration) * 100 : 0
+
+  // Generate Y-axis labels
+  const yAxisLabels = useMemo(() => {
+    const labels = []
+    const steps = 4
+    for (let i = 0; i <= steps; i++) {
+      const lat = maxLat - (i / steps) * latRange
+      labels.push(lat.toFixed(4))
+    }
+    return labels
+  }, [maxLat, latRange])
+
+  // Generate X-axis labels
+  const xAxisLabels = useMemo(() => {
+    const labels = []
+    const steps = 5
+    for (let i = 0; i <= steps; i++) {
+      const time = (i / steps) * duration
+      labels.push(formatTime(time))
+    }
+    return labels
+  }, [duration])
 
   return (
     <div className="flex h-full flex-col rounded-lg border border-border bg-card">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <div className="flex items-center gap-3">
+          <Activity className={cn("h-4 w-4", isSAR ? "text-orange-400" : "text-primary")} />
           <span className="font-mono text-xs font-semibold uppercase tracking-widest text-foreground">
-            {isSAR ? "Search Area" : "Tactical Map"}
+            Spatiotemporal Telemetry
           </span>
           <div className="h-4 w-px bg-border" />
           <span className={cn(
             "font-mono text-[10px]",
             isSAR ? "text-orange-400" : "text-muted-foreground"
           )}>
-            {isSAR ? "ALPINE ZONE | GRID REF: 39N 106W" : "SECTOR 7-ALPHA | GRID REF: 34N 118W"}
+            {missionData.length} Events | Duration: {formatTime(duration)}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <button className={cn(
-            "flex h-7 items-center gap-1.5 rounded border px-2 text-xs transition-colors",
-            isSAR 
-              ? "border-orange-500/30 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20" 
-              : "border-border bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground"
-          )}>
-            <Layers className="h-3 w-3" />
-            <span className="font-mono uppercase">Layers</span>
-          </button>
           <button className={cn(
             "flex h-7 w-7 items-center justify-center rounded border transition-colors",
             isSAR 
@@ -105,182 +124,277 @@ export function MapView() {
         </div>
       </div>
 
-      {/* Map Area */}
-      <div className="relative flex-1 bg-background">
-        {/* Simulated map grid */}
-        <div
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage: isSAR
-              ? `
-                linear-gradient(to right, oklch(0.75 0.15 45 / 0.3) 1px, transparent 1px),
-                linear-gradient(to bottom, oklch(0.75 0.15 45 / 0.3) 1px, transparent 1px)
-              `
-              : `
-                linear-gradient(to right, oklch(0.75 0.18 195 / 0.3) 1px, transparent 1px),
-                linear-gradient(to bottom, oklch(0.75 0.18 195 / 0.3) 1px, transparent 1px)
-              `,
-            backgroundSize: "40px 40px",
-          }}
-        />
-
-        {/* Sector overlay */}
-        <div className={cn(
-          "absolute inset-4 rounded border border-dashed",
-          isSAR ? "border-orange-500/20" : "border-primary/20"
-        )}>
-          {/* Quadrant lines */}
-          <div className={cn(
-            "absolute left-1/2 top-0 h-full w-px",
-            isSAR ? "bg-orange-500/10" : "bg-primary/10"
-          )} />
-          <div className={cn(
-            "absolute left-0 top-1/2 h-px w-full",
-            isSAR ? "bg-orange-500/10" : "bg-primary/10"
-          )} />
-
-          {/* Quadrant labels */}
+      {/* Scatter Plot Area */}
+      <div className="relative flex-1 p-4">
+        {/* Y-Axis Label */}
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 -rotate-90 origin-center">
           <span className={cn(
-            "absolute left-2 top-2 font-mono text-[10px]",
-            isSAR ? "text-orange-500/40" : "text-primary/40"
+            "font-mono text-[9px] uppercase tracking-widest whitespace-nowrap",
+            isSAR ? "text-orange-400/60" : "text-muted-foreground/60"
           )}>
-            {isSAR ? "NW" : "A1"}
-          </span>
-          <span className={cn(
-            "absolute right-2 top-2 font-mono text-[10px]",
-            isSAR ? "text-orange-500/40" : "text-primary/40"
-          )}>
-            {isSAR ? "NE" : "A2"}
-          </span>
-          <span className={cn(
-            "absolute bottom-2 left-2 font-mono text-[10px]",
-            isSAR ? "text-orange-500/40" : "text-primary/40"
-          )}>
-            {isSAR ? "SW" : "B1"}
-          </span>
-          <span className={cn(
-            "absolute bottom-2 right-2 font-mono text-[10px]",
-            isSAR ? "text-orange-500/40" : "text-primary/40"
-          )}>
-            {isSAR ? "SE" : "B2"}
+            Latitude →
           </span>
         </div>
 
-        {/* Flight path */}
-        <svg className="absolute inset-0 h-full w-full">
-          <path
-            d={isSAR 
-              ? "M 70% 50% Q 55% 55%, 45% 45% Q 35% 35%, 20% 30%"
-              : "M 75% 60% Q 60% 45%, 45% 50% Q 35% 55%, 25% 35%"
-            }
-            fill="none"
-            stroke={isSAR ? "oklch(0.75 0.15 45)" : "oklch(0.75 0.2 145)"}
-            strokeWidth="2"
-            strokeDasharray="8 4"
-            opacity="0.5"
-          />
-        </svg>
+        {/* X-Axis Label */}
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2">
+          <span className={cn(
+            "font-mono text-[9px] uppercase tracking-widest",
+            isSAR ? "text-orange-400/60" : "text-muted-foreground/60"
+          )}>
+            Video Time →
+          </span>
+        </div>
 
-        {/* Map markers */}
-        {markers.map((marker) => {
-          const style = markerStyles[marker.type]
-          return (
+        {/* Plot Container */}
+        <div 
+          ref={containerRef}
+          className="relative ml-10 mr-4 mt-2 mb-6 h-[calc(100%-2rem)] border-l border-b border-border/50"
+        >
+          {/* Grid Lines - Horizontal */}
+          {[0, 25, 50, 75, 100].map((pct) => (
             <div
-              key={marker.id}
-              className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer group"
-              style={{ left: `${marker.x}%`, top: `${marker.y}%` }}
-            >
-              <div className="relative">
-                <div
-                  className={cn(
-                    "h-3 w-3 rounded-full border-2 border-background",
-                    style.bgColor
-                  )}
-                />
-                <div
-                  className={cn(
-                    "absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 animate-ping rounded-full opacity-30",
-                    style.bgColor
-                  )}
-                />
-                {/* Label on hover */}
-                <div className="absolute left-full top-1/2 ml-2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100">
-                  <div className="whitespace-nowrap rounded bg-card px-2 py-1 font-mono text-[10px] text-foreground shadow-lg border border-border">
-                    {marker.label}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )
-        })}
+              key={`h-${pct}`}
+              className={cn(
+                "absolute left-0 right-0 border-t border-dashed",
+                isSAR ? "border-orange-500/10" : "border-primary/10"
+              )}
+              style={{ top: `${pct}%` }}
+            />
+          ))}
 
-        {/* Zoom Controls */}
-        <div className="absolute bottom-4 right-4 flex flex-col gap-1">
-          <button className="flex h-8 w-8 items-center justify-center rounded bg-card/80 text-foreground/70 backdrop-blur border border-border transition-colors hover:bg-card hover:text-foreground">
-            <Plus className="h-4 w-4" />
-          </button>
-          <button className="flex h-8 w-8 items-center justify-center rounded bg-card/80 text-foreground/70 backdrop-blur border border-border transition-colors hover:bg-card hover:text-foreground">
-            <Minus className="h-4 w-4" />
-          </button>
-          <button className="flex h-8 w-8 items-center justify-center rounded bg-card/80 text-foreground/70 backdrop-blur border border-border transition-colors hover:bg-card hover:text-foreground">
-            <Navigation className="h-4 w-4" />
-          </button>
-          <button className="flex h-8 w-8 items-center justify-center rounded bg-card/80 text-foreground/70 backdrop-blur border border-border transition-colors hover:bg-card hover:text-foreground">
-            <Crosshair className="h-4 w-4" />
-          </button>
-        </div>
+          {/* Grid Lines - Vertical */}
+          {[0, 20, 40, 60, 80, 100].map((pct) => (
+            <div
+              key={`v-${pct}`}
+              className={cn(
+                "absolute top-0 bottom-0 border-l border-dashed",
+                isSAR ? "border-orange-500/10" : "border-primary/10"
+              )}
+              style={{ left: `${pct}%` }}
+            />
+          ))}
 
-        {/* Scale indicator */}
-        <div className="absolute bottom-4 left-4 flex items-center gap-2">
-          <div className="flex items-center gap-1">
-            <div className="h-px w-16 bg-foreground/50" />
-            <div className="h-2 w-px bg-foreground/50" />
+          {/* Y-Axis Labels */}
+          <div className="absolute -left-10 top-0 bottom-0 flex flex-col justify-between py-0">
+            {yAxisLabels.map((label, i) => (
+              <span
+                key={i}
+                className={cn(
+                  "font-mono text-[8px] text-right w-9",
+                  isSAR ? "text-orange-400/50" : "text-muted-foreground/50"
+                )}
+              >
+                {label}°
+              </span>
+            ))}
           </div>
-          <span className="font-mono text-[10px] text-muted-foreground">
-            {isSAR ? "200m" : "500m"}
-          </span>
-        </div>
 
-        {/* Compass */}
-        <div className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-card/80 backdrop-blur border border-border">
-          <div className="relative h-6 w-6">
+          {/* X-Axis Labels */}
+          <div className="absolute -bottom-5 left-0 right-0 flex justify-between">
+            {xAxisLabels.map((label, i) => (
+              <span
+                key={i}
+                className={cn(
+                  "font-mono text-[8px]",
+                  isSAR ? "text-orange-400/50" : "text-muted-foreground/50"
+                )}
+              >
+                {label}
+              </span>
+            ))}
+          </div>
+
+          {/* Live Playhead / Scanner Line */}
+          <div
+            className={cn(
+              "absolute top-0 bottom-0 w-px transition-all duration-100",
+              isSAR 
+                ? "bg-orange-500 shadow-[0_0_8px_2px] shadow-orange-500/50" 
+                : "bg-cyan-400 shadow-[0_0_8px_2px] shadow-cyan-400/50"
+            )}
+            style={{ left: `${playheadPosition}%` }}
+          >
+            {/* Playhead indicator at top */}
             <div className={cn(
-              "absolute left-1/2 top-0 h-3 w-0.5 -translate-x-1/2 rounded-full",
-              isSAR ? "bg-orange-500" : "bg-neon-red"
+              "absolute -top-1 left-1/2 -translate-x-1/2 h-2 w-2 rotate-45",
+              isSAR ? "bg-orange-500" : "bg-cyan-400"
             )} />
-            <div className="absolute bottom-0 left-1/2 h-3 w-0.5 -translate-x-1/2 bg-foreground/30 rounded-full" />
-            <span className={cn(
-              "absolute -top-3 left-1/2 -translate-x-1/2 font-mono text-[8px] font-bold",
-              isSAR ? "text-orange-500" : "text-neon-red"
+            {/* Current time label */}
+            <div className={cn(
+              "absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded px-1 py-0.5 font-mono text-[8px] font-bold",
+              isSAR ? "bg-orange-500 text-black" : "bg-cyan-400 text-black"
             )}>
-              N
-            </span>
+              {formatTime(currentTime)}
+            </div>
           </div>
+
+          {/* Event Data Points */}
+          {missionData.map((event) => {
+            if (!event.coordinates || duration === 0) return null
+
+            // Calculate X position based on timestamp
+            const xPct = (event.timestamp_ms / 1000 / duration) * 100
+            
+            // Calculate Y position based on latitude (inverted so higher lat = higher on screen)
+            const yPct = 100 - ((event.coordinates.lat - minLat) / latRange) * 100
+
+            const isHovered = hoveredEvent === event.id
+            const isAtPlayhead = Math.abs((event.timestamp_ms / 1000) - currentTime) < 1.5
+
+            // Determine color based on mode and threat/confidence
+            const dotColor = isSAR
+              ? (event.confidence && event.confidence > 0.8 
+                  ? "bg-yellow-400" 
+                  : "bg-orange-500")
+              : (event.threat_level === "high" || event.threat_level === "critical"
+                  ? "bg-red-500"
+                  : "bg-cyan-400")
+
+            const glowColor = isSAR
+              ? (event.confidence && event.confidence > 0.8 
+                  ? "shadow-yellow-400/60" 
+                  : "shadow-orange-500/60")
+              : (event.threat_level === "high" || event.threat_level === "critical"
+                  ? "shadow-red-500/60"
+                  : "shadow-cyan-400/60")
+
+            return (
+              <div
+                key={event.id}
+                className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer group"
+                style={{ 
+                  left: `${xPct}%`, 
+                  top: `${yPct}%`,
+                }}
+                onClick={() => handleEventClick(event.timestamp_ms)}
+                onMouseEnter={() => setHoveredEvent(event.id)}
+                onMouseLeave={() => setHoveredEvent(null)}
+              >
+                {/* Outer glow ring */}
+                <div
+                  className={cn(
+                    "absolute inset-0 rounded-full transition-all duration-200",
+                    isAtPlayhead && "animate-ping",
+                    dotColor,
+                    "opacity-30"
+                  )}
+                  style={{
+                    width: isHovered ? 24 : isAtPlayhead ? 20 : 16,
+                    height: isHovered ? 24 : isAtPlayhead ? 20 : 16,
+                    marginLeft: isHovered ? -12 : isAtPlayhead ? -10 : -8,
+                    marginTop: isHovered ? -12 : isAtPlayhead ? -10 : -8,
+                  }}
+                />
+                
+                {/* Main dot */}
+                <div
+                  className={cn(
+                    "relative rounded-full border border-background transition-all duration-200",
+                    dotColor,
+                    (isHovered || isAtPlayhead) && "shadow-[0_0_10px_2px]",
+                    (isHovered || isAtPlayhead) && glowColor
+                  )}
+                  style={{
+                    width: isHovered ? 12 : isAtPlayhead ? 10 : 8,
+                    height: isHovered ? 12 : isAtPlayhead ? 10 : 8,
+                    marginLeft: isHovered ? -6 : isAtPlayhead ? -5 : -4,
+                    marginTop: isHovered ? -6 : isAtPlayhead ? -5 : -4,
+                  }}
+                />
+
+                {/* Tooltip on hover */}
+                {isHovered && (
+                  <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
+                    <div className="whitespace-nowrap rounded bg-card px-2 py-1.5 font-mono text-[10px] shadow-lg border border-border min-w-[120px]">
+                      <div className="font-semibold text-foreground">{event.title}</div>
+                      <div className="text-muted-foreground mt-0.5">
+                        {formatTime(event.timestamp_ms / 1000)}
+                      </div>
+                      <div className="text-muted-foreground">
+                        {event.coordinates.lat.toFixed(4)}°, {event.coordinates.lon.toFixed(4)}°
+                      </div>
+                      {event.threat_level && (
+                        <div className={cn(
+                          "mt-1 uppercase text-[9px] font-bold",
+                          event.threat_level === "high" || event.threat_level === "critical" 
+                            ? "text-red-500" 
+                            : "text-amber-500"
+                        )}>
+                          {event.threat_level} Threat
+                        </div>
+                      )}
+                      {event.confidence !== undefined && (
+                        <div className={cn(
+                          "mt-1 text-[9px] font-bold",
+                          event.confidence > 0.8 ? "text-green-500" : "text-orange-500"
+                        )}>
+                          {Math.round(event.confidence * 100)}% Confidence
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+
+          {/* Empty state */}
+          {missionData.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="font-mono text-xs text-muted-foreground">
+                Upload mission data to view telemetry
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Footer - Legend */}
       <div className="flex items-center justify-between border-t border-border px-4 py-2">
         <div className="flex items-center gap-4">
-          {Object.entries(markerStyles).map(([type, style]) => (
-            <div key={type} className="flex items-center gap-1.5">
-              <div className={cn("h-2 w-2 rounded-full", style.bgColor)} />
-              <span className="font-mono text-[10px] uppercase text-muted-foreground">
-                {isSAR && type === "poi" ? "thermal" : type}
-              </span>
-            </div>
-          ))}
+          {isSAR ? (
+            <>
+              <div className="flex items-center gap-1.5">
+                <div className="h-2 w-2 rounded-full bg-yellow-400" />
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  High Confidence (&gt;80%)
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="h-2 w-2 rounded-full bg-orange-500" />
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  Low Confidence
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-1.5">
+                <div className="h-2 w-2 rounded-full bg-red-500" />
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  High/Critical Threat
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="h-2 w-2 rounded-full bg-cyan-400" />
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  Medium/Low Threat
+                </span>
+              </div>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <MapPin className={cn(
-            "h-3 w-3",
-            isSAR ? "text-orange-400" : "text-muted-foreground"
+          <div className={cn(
+            "h-4 w-px",
+            isSAR ? "bg-orange-500" : "bg-cyan-400"
           )} />
           <span className={cn(
             "font-mono text-[10px]",
             isSAR ? "text-orange-400" : "text-muted-foreground"
           )}>
-            {markers.length} {isSAR ? "Search Points" : "Active Tracks"}
+            Playhead ({formatTime(currentTime)})
           </span>
         </div>
       </div>

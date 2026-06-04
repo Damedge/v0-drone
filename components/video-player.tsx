@@ -15,6 +15,7 @@ import {
   ZoomOut,
   RotateCw,
   X,
+  Move,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useMission, MissionEvent } from "@/contexts/mission-context"
@@ -157,6 +158,11 @@ export function VideoPlayer() {
   const [markerDuration, setMarkerDuration] = useState(3) // seconds
   const [markers, setMarkers] = useState<Marker[]>([])
 
+  // Pan state for drag-to-pan when zoomed
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
+  const [isPanning, setIsPanning] = useState(false)
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 })
+
   const isSAR = missionMode === "sar"
   const videoSrc = isSAR ? "/videos/searchForPeople.mp4" : "/videos/battlefield.mp4"
 
@@ -194,8 +200,16 @@ export function VideoPlayer() {
       setZoomLevel(1)
       setRotation(0)
       setMarkers([])
+      setPanOffset({ x: 0, y: 0 })
     }
   }, [missionMode, videoRef])
+
+  // Reset pan offset when zoom level returns to 1
+  useEffect(() => {
+    if (zoomLevel === 1) {
+      setPanOffset({ x: 0, y: 0 })
+    }
+  }, [zoomLevel])
 
   const safePlay = async () => {
     const video = videoRef.current
@@ -284,8 +298,43 @@ export function VideoPlayer() {
     setMarkMode((prev) => !prev)
   }
 
-  // Handle video area click for placing markers
+  // Pan handlers for drag-to-pan when zoomed
+  const handlePanStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (zoomLevel <= 1 || markMode) return
+    e.preventDefault()
+    setIsPanning(true)
+    setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y })
+  }
+
+  const handlePanMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isPanning || zoomLevel <= 1) return
+    e.preventDefault()
+    
+    const container = videoContainerRef.current
+    if (!container) return
+
+    // Calculate max pan based on zoom level and container size
+    const containerRect = container.getBoundingClientRect()
+    const maxPanX = (containerRect.width * (zoomLevel - 1)) / 2
+    const maxPanY = (containerRect.height * (zoomLevel - 1)) / 2
+
+    const newX = e.clientX - panStart.x
+    const newY = e.clientY - panStart.y
+
+    // Clamp pan offset to prevent panning too far
+    setPanOffset({
+      x: Math.max(-maxPanX, Math.min(maxPanX, newX)),
+      y: Math.max(-maxPanY, Math.min(maxPanY, newY)),
+    })
+  }
+
+  const handlePanEnd = () => {
+    setIsPanning(false)
+  }
+
+  // Handle video area click for placing markers (only if not panning)
   const handleVideoAreaClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isPanning) return
     if (!markMode) return
 
     const rect = e.currentTarget.getBoundingClientRect()
@@ -302,6 +351,13 @@ export function VideoPlayer() {
 
     setMarkers((prev) => [...prev, newMarker])
     setMarkMode(false) // Exit mark mode after placing
+  }
+
+  // Determine cursor style
+  const getCursorStyle = () => {
+    if (markMode) return "cursor-crosshair"
+    if (zoomLevel > 1) return isPanning ? "cursor-grabbing" : "cursor-grab"
+    return ""
   }
 
   return (
@@ -329,6 +385,13 @@ export function VideoPlayer() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {/* Pan indicator */}
+          {zoomLevel > 1 && (
+            <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
+              <Move className="h-3 w-3" />
+              Drag to Pan
+            </span>
+          )}
           {/* Zoom indicator */}
           {zoomLevel !== 1 && (
             <span className="font-mono text-[10px] text-muted-foreground">
@@ -362,22 +425,26 @@ export function VideoPlayer() {
         </div>
       </div>
 
-      {/* Video Area with Bounding Box Overlay */}
+      {/* Video Area with Pan/Zoom Support */}
       <div 
         ref={videoContainerRef}
         className={cn(
-          "relative aspect-video bg-background overflow-hidden",
-          markMode && "cursor-crosshair"
+          "relative aspect-video bg-background overflow-hidden select-none",
+          getCursorStyle()
         )}
         onClick={handleVideoAreaClick}
+        onMouseDown={handlePanStart}
+        onMouseMove={handlePanMove}
+        onMouseUp={handlePanEnd}
+        onMouseLeave={handlePanEnd}
       >
-        {/* Real Video Element with zoom and rotation transforms */}
+        {/* Real Video Element with zoom, rotation, and pan transforms */}
         <video
           ref={videoRef}
           key={videoSrc}
-          className="absolute inset-0 h-full w-full object-cover transition-transform duration-300"
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 pointer-events-none"
           style={{
-            transform: `scale(${zoomLevel}) rotate(${rotation}deg)`,
+            transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel}) rotate(${rotation}deg)`,
           }}
           src={videoSrc}
           muted
@@ -389,26 +456,30 @@ export function VideoPlayer() {
           onPause={() => setIsPlaying(false)}
         />
 
-        {/* CS:GO ESP Tactical Bounding Box - z-10 ensures it renders above video */}
-        {activeEvent && activeEvent.target_box && (
-          <div className="absolute inset-0 z-10 pointer-events-none">
+        {/* Overlays - move with pan */}
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel}) rotate(${rotation}deg)`,
+          }}
+        >
+          {/* CS:GO ESP Tactical Bounding Box */}
+          {activeEvent && activeEvent.target_box && (
             <TacticalBoundingBox event={activeEvent} isSAR={isSAR} />
-          </div>
-        )}
+          )}
 
-        {/* User-placed markers - z-20 ensures they render above everything */}
-        <div className="absolute inset-0 z-20 pointer-events-none">
+          {/* User-placed markers */}
           {visibleMarkers.map((marker) => (
             <UserMarker key={marker.id} marker={marker} isSAR={isSAR} />
           ))}
         </div>
 
-        {/* Mark mode indicator */}
+        {/* Mark mode indicator - fixed position */}
         {markMode && (
           <div className="absolute inset-0 z-30 pointer-events-none border-4 border-dashed border-cyan-400/50 animate-pulse" />
         )}
 
-        {/* HUD Overlay - Top Left */}
+        {/* HUD Overlay - Top Left (fixed position) */}
         <div className="absolute left-4 top-4 space-y-1 pointer-events-none z-10">
           <div className={cn(
             "font-mono text-[10px]",
@@ -430,7 +501,7 @@ export function VideoPlayer() {
           </div>
         </div>
 
-        {/* HUD Overlay - Top Right */}
+        {/* HUD Overlay - Top Right (fixed position) */}
         <div className="absolute right-4 top-4 space-y-1 text-right pointer-events-none z-10">
           <div className={cn(
             "font-mono text-[10px]",
@@ -452,7 +523,7 @@ export function VideoPlayer() {
           </div>
         </div>
 
-        {/* Active Target Indicator */}
+        {/* Active Target Indicator (fixed position) */}
         {activeEvent && (
           <div className={cn(
             "absolute bottom-4 left-4 flex items-center gap-2 rounded px-2 py-1 pointer-events-none z-10",
@@ -479,7 +550,7 @@ export function VideoPlayer() {
           </div>
         )}
 
-        {/* Timecode when no active target */}
+        {/* Timecode when no active target (fixed position) */}
         {!activeEvent && (
           <div className="absolute bottom-4 left-4 pointer-events-none z-10">
             <div className="font-mono text-xs font-semibold text-foreground/80">
@@ -488,7 +559,7 @@ export function VideoPlayer() {
           </div>
         )}
 
-        {/* Zoom/Rotate/Mark Controls - Right Side */}
+        {/* Zoom/Rotate/Mark Controls - Right Side (fixed position, always interactive) */}
         <div className="absolute right-4 top-1/2 flex -translate-y-1/2 flex-col gap-1 z-30">
           <button 
             onClick={(e) => { e.stopPropagation(); handleZoomIn(); }}
