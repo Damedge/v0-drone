@@ -114,10 +114,8 @@ export function VideoPlayer() {
     const ACTIVE_WINDOW = 1.5 // seconds
     const foundEvent = missionData.find((event) => {
       const eventTimeSec = event.timestamp_ms / 1000
-      return (
-        event.target_box &&
-        Math.abs(currentTime - eventTimeSec) <= ACTIVE_WINDOW
-      )
+      const isWithinWindow = Math.abs(currentTime - eventTimeSec) <= ACTIVE_WINDOW
+      return event.target_box && isWithinWindow
     })
     setActiveEvent(foundEvent || null)
   }, [currentTime, missionData])
@@ -268,9 +266,11 @@ export function VideoPlayer() {
           onPause={() => setIsPlaying(false)}
         />
 
-        {/* CS:GO ESP Tactical Bounding Box */}
-        {activeEvent && (
-          <TacticalBoundingBox event={activeEvent} isSAR={isSAR} />
+        {/* CS:GO ESP Tactical Bounding Box - z-10 ensures it renders above video */}
+        {activeEvent && activeEvent.target_box && (
+          <div className="absolute inset-0 z-10 pointer-events-none">
+            <TacticalBoundingBox event={activeEvent} isSAR={isSAR} />
+          </div>
         )}
 
         {/* HUD Overlay - Top Left */}
