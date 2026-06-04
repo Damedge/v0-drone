@@ -28,6 +28,35 @@ interface Marker {
   durationSec: number
 }
 
+// Fleet asset definitions
+interface FleetAsset {
+  id: string
+  name: string
+  sensorType: string
+  thumbnail: string
+  videoSrc: string
+}
+
+const tacticalFleet: FleetAsset[] = [
+  { id: "drone1", name: "Drone 1", sensorType: "FLIR", thumbnail: "/videos/battlefield.mp4", videoSrc: "/videos/battlefield.mp4" },
+  { id: "drone2", name: "Drone 2", sensorType: "RGB", thumbnail: "/videos/battlefield.mp4", videoSrc: "/videos/battlefield.mp4" },
+  { id: "drone3", name: "Drone 3", sensorType: "OVERWATCH", thumbnail: "/videos/battlefield.mp4", videoSrc: "/videos/battlefield.mp4" },
+]
+
+const sarFleet: FleetAsset[] = [
+  { id: "drone1", name: "Drone 1", sensorType: "FLIR", thumbnail: "/videos/searchForPeople.mp4", videoSrc: "/videos/searchForPeople.mp4" },
+  { id: "drone2", name: "Drone 2", sensorType: "RGB", thumbnail: "/videos/searchForPeople.mp4", videoSrc: "/videos/searchForPeople.mp4" },
+  { id: "drone3", name: "Drone 3", sensorType: "THERMAL", thumbnail: "/videos/searchForPeople.mp4", videoSrc: "/videos/searchForPeople.mp4" },
+]
+
+// Telemetry interface
+interface Telemetry {
+  lat: number
+  lon: number
+  heading: number
+  alt: number
+}
+
 // User-placed marker component
 function UserMarker({ marker, isSAR }: { marker: Marker; isSAR: boolean }) {
   return (
@@ -90,8 +119,26 @@ export function VideoPlayer() {
   const [isPanning, setIsPanning] = useState(false)
   const [panStart, setPanStart] = useState({ x: 0, y: 0 })
 
+  // Fleet asset state
+  const [activeAssetId, setActiveAssetId] = useState("drone1")
+  
+  // Dynamic telemetry state
+  const [telemetry, setTelemetry] = useState<Telemetry>({
+    lat: 0,
+    lon: 0,
+    heading: 0,
+    alt: 0,
+  })
+
   const isSAR = missionMode === "sar"
-  const videoSrc = isSAR ? "/videos/searchForPeople.mp4" : "/videos/battlefield.mp4"
+  const fleet = isSAR ? sarFleet : tacticalFleet
+  const activeAsset = fleet.find(a => a.id === activeAssetId) || fleet[0]
+  const videoSrc = activeAsset.videoSrc
+
+  // Base telemetry values per mode
+  const baseTelemetry = isSAR 
+    ? { lat: -37.8109, lon: 144.9672, heading: 270, alt: 850 }
+    : { lat: -17.8132, lon: 74.9637, heading: 45, alt: 12400 }
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -104,7 +151,26 @@ export function VideoPlayer() {
     return currentTime >= marker.timestampSec && currentTime <= marker.timestampSec + marker.durationSec
   })
 
-  // Reset video when mode changes
+  // Update telemetry based on currentTime to simulate live GPS feed
+  const updateTelemetry = (time: number) => {
+    const drift = time * 0.00001
+    const headingOscillation = Math.sin(time * 0.5) * 2.5 // oscillates between -2.5 and +2.5
+    
+    setTelemetry({
+      lat: baseTelemetry.lat + drift,
+      lon: baseTelemetry.lon + drift * 1.2,
+      heading: baseTelemetry.heading + headingOscillation,
+      alt: baseTelemetry.alt + Math.sin(time * 0.3) * 20, // slight altitude variation
+    })
+  }
+
+  // Handle time update with telemetry
+  const handleTimeUpdate = (time: number) => {
+    setCurrentTime(time)
+    updateTelemetry(time)
+  }
+
+  // Reset video when mode or asset changes
   useEffect(() => {
     const video = videoRef.current
     if (video) {
@@ -116,8 +182,9 @@ export function VideoPlayer() {
       setRotation(0)
       setMarkers([])
       setPanOffset({ x: 0, y: 0 })
+      updateTelemetry(0)
     }
-  }, [missionMode, videoRef])
+  }, [missionMode, activeAssetId, videoRef])
 
   // Reset pan offset when zoom level returns to 1
   useEffect(() => {
@@ -418,7 +485,7 @@ export function VideoPlayer() {
           muted
           playsInline
           crossOrigin="anonymous"
-          onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+          onTimeUpdate={(e) => handleTimeUpdate(e.currentTarget.currentTime)}
           onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
           onDurationChange={(e) => setDuration(e.currentTarget.duration || 0)}
           onPlay={() => setIsPlaying(true)}
@@ -449,19 +516,19 @@ export function VideoPlayer() {
             "font-mono text-[10px]",
             isSAR ? "text-orange-400/80" : "text-primary/80"
           )}>
-            LAT: {isSAR ? "-37.8109° S" : "-17.8132° N"}
+            LAT: {telemetry.lat.toFixed(4)}° {isSAR ? "S" : "N"}
           </div>
           <div className={cn(
             "font-mono text-[10px]",
             isSAR ? "text-orange-400/80" : "text-primary/80"
           )}>
-            LON: {isSAR ? "144.9672° E" : "74.9637° E"}
+            LON: {Math.abs(telemetry.lon).toFixed(4)}° E
           </div>
           <div className={cn(
             "font-mono text-[10px]",
             isSAR ? "text-orange-400/80" : "text-primary/80"
           )}>
-            ZOOM: {zoomLevel.toFixed(1)}x
+            ALT: {telemetry.alt.toFixed(0)} FT
           </div>
         </div>
 
@@ -471,13 +538,13 @@ export function VideoPlayer() {
             "font-mono text-[10px]",
             isSAR ? "text-orange-400/80" : "text-primary/80"
           )}>
-            HEADING: {isSAR ? "270°" : "045°"}
+            HEADING: {telemetry.heading.toFixed(0)}°
           </div>
           <div className={cn(
             "font-mono text-[10px]",
             isSAR ? "text-orange-400/80" : "text-primary/80"
           )}>
-            SLANT: {isSAR ? "0.8 NM" : "12.4 NM"}
+            ZOOM: {zoomLevel.toFixed(1)}x
           </div>
           <div className={cn(
             "font-mono text-[10px]",
@@ -657,6 +724,75 @@ export function VideoPlayer() {
           >
             <Maximize2 className="h-4 w-4" />
           </button>
+        </div>
+      </div>
+
+      {/* Mission Assets Gallery (Fleet) */}
+      <div className="border-t border-border px-4 py-2">
+        <div className="flex items-center gap-3 mb-2">
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            Mission Assets (Fleet)
+          </span>
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {fleet.map((asset) => {
+            const isActive = asset.id === activeAssetId
+            return (
+              <button
+                key={asset.id}
+                onClick={() => setActiveAssetId(asset.id)}
+                className={cn(
+                  "relative flex-shrink-0 w-28 rounded-md overflow-hidden border-2 transition-all",
+                  isActive
+                    ? isSAR
+                      ? "border-orange-500 shadow-[0_0_12px_rgba(249,115,22,0.4)]"
+                      : "border-primary shadow-[0_0_12px_rgba(0,255,255,0.3)]"
+                    : "border-border hover:border-muted-foreground/50"
+                )}
+              >
+                {/* Thumbnail - using video poster or solid color */}
+                <div className={cn(
+                  "aspect-video",
+                  isSAR ? "bg-orange-950/50" : "bg-slate-900"
+                )}>
+                  <div className="flex h-full items-center justify-center">
+                    <div className={cn(
+                      "h-6 w-6 rounded-full",
+                      isActive
+                        ? isSAR ? "bg-orange-500/30" : "bg-primary/30"
+                        : "bg-muted-foreground/20"
+                    )} />
+                  </div>
+                </div>
+                {/* Asset Label */}
+                <div className={cn(
+                  "px-1.5 py-1 text-center",
+                  isActive
+                    ? isSAR ? "bg-orange-500/10" : "bg-primary/10"
+                    : "bg-background"
+                )}>
+                  <p className={cn(
+                    "font-mono text-[9px] font-semibold uppercase tracking-wide truncate",
+                    isActive
+                      ? isSAR ? "text-orange-400" : "text-primary"
+                      : "text-muted-foreground"
+                  )}>
+                    {asset.name}
+                  </p>
+                  <p className="font-mono text-[8px] text-muted-foreground/70 uppercase">
+                    {asset.sensorType}
+                  </p>
+                </div>
+                {/* Active indicator dot */}
+                {isActive && (
+                  <div className={cn(
+                    "absolute top-1 right-1 h-2 w-2 rounded-full",
+                    isSAR ? "bg-orange-500" : "bg-primary"
+                  )} />
+                )}
+              </button>
+            )
+          })}
         </div>
       </div>
     </div>

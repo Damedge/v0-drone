@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useRef, ReactNode, RefObject } from "react"
+import { createContext, useContext, useState, useRef, useEffect, ReactNode, RefObject } from "react"
 
 export type MissionMode = "tactical" | "sar"
 export type ActiveView = "hub" | "analysis" | "statistics" | "aar"
@@ -72,6 +72,11 @@ export function MissionProvider({ children }: { children: ReactNode }) {
   const addSnapshot = (snapshot: Snapshot) => {
     setSnapshots((prev) => [...prev, snapshot])
   }
+
+  // Reset snapshots when mission mode changes
+  useEffect(() => {
+    setSnapshots([])
+  }, [missionMode])
 
   return (
     <MissionContext.Provider value={{ 
