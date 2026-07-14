@@ -153,10 +153,17 @@ export function KestrelLanding() {
       </header>
 
       {menuOpen && (
-        <nav
-          className="glass-panel absolute inset-x-4 top-20 z-50 flex flex-col gap-1 rounded-2xl p-3 md:hidden"
-          aria-label="Mobile navigation"
-        >
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-30 bg-background/80 backdrop-blur-sm md:hidden"
+            onClick={() => setMenuOpen(false)}
+            aria-label="Close navigation overlay"
+          />
+          <nav
+            className="glass-panel fixed inset-x-4 top-20 z-50 flex flex-col gap-1 rounded-2xl p-3 md:hidden"
+            aria-label="Mobile navigation"
+          >
           {navItems.map((item) => (
             <a
               key={item}
@@ -174,7 +181,8 @@ export function KestrelLanding() {
           >
             Request demo <ArrowRight className="h-4 w-4" />
           </a>
-        </nav>
+          </nav>
+        </>
       )}
 
       <section className="relative min-h-screen" aria-labelledby="hero-title">
