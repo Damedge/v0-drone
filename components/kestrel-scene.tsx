@@ -165,13 +165,13 @@ function SceneContent() {
   })
 
   return (
-    <group ref={world} rotation={[-0.08, -0.12, 0]}>
+    <group ref={world} position={[0, -0.18, 0]} rotation={[-0.06, -0.1, 0]}>
       <ambientLight intensity={0.48} />
       <directionalLight color="#e8f5f2" intensity={1.4} position={[3, 5, 5]} />
       <Float speed={0.6} rotationIntensity={0.05} floatIntensity={0.18}>
-        <WireMountain position={[-2.05, -0.82, -0.55]} scale={1.05} />
-        <WireMountain position={[-1.25, -0.92, -0.8]} scale={0.72} />
-        <WireMountain position={[-2.65, -0.96, 0.1]} scale={0.6} />
+        <WireMountain position={[-2.05, -0.82, -0.55]} scale={1.15} />
+        <WireMountain position={[-1.25, -0.92, -0.8]} scale={0.8} />
+        <WireMountain position={[-2.65, -0.96, 0.1]} scale={0.68} />
         <City />
         <DataMap />
         <Core />
@@ -187,11 +187,11 @@ export function KestrelScene() {
     <div className="h-full w-full" aria-hidden="true">
       <Canvas
         dpr={[1, 1.6]}
-        camera={{ position: [0, 1.7, 7.4], fov: 43 }}
+        camera={{ position: [0, 1.2, 5.8], fov: 36 }}
         gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       >
         <color attach="background" args={[DARK]} />
-        <fog attach="fog" args={[DARK, 6, 13]} />
+        <fog attach="fog" args={[DARK, 7, 14]} />
         <SceneContent />
       </Canvas>
     </div>
