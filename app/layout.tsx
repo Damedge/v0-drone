@@ -1,40 +1,37 @@
-import { Analytics } from '@vercel/analytics/next'
-import type { Metadata } from 'next'
-import './globals.css'
+import type { Metadata, Viewport } from "next"
+import { Geist, Geist_Mono } from "next/font/google"
+import "./globals.css"
+
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist" })
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" })
 
 export const metadata: Metadata = {
-  title: 'OVERWATCH | AEROSPACE',
-  description: 'Tactical ISR Drone Analysis Dashboard',
-  generator: 'v0.app',
-  icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
+  title: "Kestrel Recon | AI-Native Spatial Intelligence",
+  description:
+    "Kestrel Recon transforms geospatial data into operational intelligence with AI-native analytics built for a changing world.",
+  metadataBase: new URL("https://kestrelrecon.com"),
+  openGraph: {
+    title: "Kestrel Recon | See the world before it changes",
+    description: "AI-native spatial intelligence for decisive teams.",
+    url: "https://kestrelrecon.com",
+    siteName: "Kestrel Recon",
+    type: "website",
   },
 }
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+export const viewport: Viewport = {
+  themeColor: "#090b12",
+  colorScheme: "dark",
+  width: "device-width",
+  initialScale: 1,
+  userScalable: true,
+}
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="dark">
-      <body className="font-sans antialiased bg-background">
+    <html lang="en" className="bg-background">
+      <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
         {children}
-        {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
   )
